@@ -78,4 +78,15 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+import http.server
+import socketserver
+import threading
 
+def keep_render_happy():
+    PORT = int(os.environ.get('PORT', 10000))
+    Handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+        print(f"Dummy server started on port {PORT}")
+        httpd.serve_forever()
+
+threading.Thread(target=keep_render_happy, daemon=True).start()
