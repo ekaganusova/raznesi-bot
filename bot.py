@@ -3,6 +3,9 @@ import os
 import openai
 import asyncio
 import threading
+import http.server
+import socketserver
+
 from telegram import Bot, Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -11,8 +14,6 @@ from telegram.ext import (
     ContextTypes,
     filters
 )
-import http.server
-import socketserver
 
 # Переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -26,11 +27,14 @@ logging.basicConfig(level=logging.INFO)
 
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог.")
+    await update.message.reply_text(
+        "Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог."
+    )
 
 # Обработка входящих сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
+    print(f"ПОЛУЧЕНО СООБЩЕНИЕ: {user_input}")  # для Render логов
 
     prompt = f"""
 Ты — опытный маркетолог. Пользователь написал идею или описание бизнеса. Сделай разбор в формате:
@@ -60,12 +64,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"Ошибка OpenAI: {e}")
         await update.message.reply_text("Произошла ошибка. Попробуй позже.")
 
-# Заглушка для Render (порт)
+# Заглушка для Render — фейковый порт
 def keep_render_happy():
     PORT = int(os.environ.get("PORT", 10000))
     Handler = http.server.SimpleHTTPRequestHandler
     with socketserver.TCPServer(("", PORT), Handler) as httpd:
-        print(f"Dummy server started on port {PORT}")
+        print(f"Фейковый сервер запущен на порту {PORT}")
         httpd.serve_forever()
 
 threading.Thread(target=keep_render_happy, daemon=True).start()
