@@ -52,7 +52,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Текст пользователя: {user_input}
 """
 
-        try:
+            try:
         print("GPT: отправляю запрос...")
         response = openai.ChatCompletion.create(
             model="gpt-4",
@@ -65,6 +65,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print("GPT: ответ получен")
         answer = response.choices[0].message.content
         await update.message.reply_text(answer)
+
     except Exception as e:
         logging.error(f"Ошибка OpenAI: {e}")
         print(f"ОШИБКА GPT: {e}")
