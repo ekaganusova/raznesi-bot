@@ -42,7 +42,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог."
     )
 
-# Сообщения
+# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
     logging.warning(f"ПОЛУЧЕНО: {user_input}")
@@ -60,7 +60,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Текст пользователя: {user_input}
 """
 
-        try:
+    try:
         logging.warning("GPT: отправляю запрос...")
 
         client = OpenAI(api_key=OPENAI_KEY)
