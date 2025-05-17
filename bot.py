@@ -9,36 +9,40 @@ from telegram.ext import (
     ContextTypes,
     filters
 )
-from flask import Flask, request
-from telegram.ext import Application
-import threading
+from flask import Flask
 import asyncio
 
 # Переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_KEY = os.getenv("OPENAI_KEY")
-WEBHOOK_URL = "https://raznesi-bot.onrender.com"
 
 openai.api_key = OPENAI_KEY
 
 # Логирование
 logging.basicConfig(level=logging.INFO)
 
-# Flask
+# Flask для Render
 app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return "Разнеси работает!"
+
+# Telegram-приложение
 bot = Bot(token=TELEGRAM_TOKEN)
+application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
 # /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("==> ОБРАБОТКА КОМАНДЫ /start")
+    logging.warning("==> ОБРАБОТКА КОМАНДЫ /start")
     await update.message.reply_text(
         "Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог."
     )
 
-# Обработка входящих сообщений
+# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
-    print(f"ПОЛУЧЕНО: {user_input}")
+    logging.warning(f"ПОЛУЧЕНО: {user_input}")
 
     prompt = f"""
 Ты — опытный маркетолог. Пользователь написал идею или описание бизнеса. Сделай разбор в формате:
@@ -54,7 +58,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
 
     try:
-        print("GPT: отправляю запрос...")
+        logging.warning("GPT: отправляю запрос...")
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
@@ -63,64 +67,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ],
             max_tokens=500,
         )
-        print("GPT: ответ получен")
         answer = response.choices[0].message.content
+        logging.warning("GPT: ответ получен")
         await update.message.reply_text(answer)
 
     except Exception as e:
         logging.error(f"Ошибка OpenAI: {e}")
-        print(f"ОШИБКА GPT: {e}")
         await update.message.reply_text("Что-то пошло не так. Попробуй позже.")
 
-# Telegram-приложение
-application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+# Регистрация хендлеров
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Webhook-обработчик
-@app.route("/")
-def index():
-    return "Разнеси работает!"
+# Запуск Flask и Telegram
+if __name__ == "__main__":
+    async def main():
+        await application.initialize()
+        await application.start()
+        await application.updater.start_polling()
+        logging.warning("==> Telegram бот запущен через polling")
+        await application.updater.idle()
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    logging.warning("==> ВХОД В WEBHOOK")
-    try:
-        data = request.get_json(force=True)
-        logging.warning(f"ПОЛУЧЕН ОБНОВЛЕНИЕ: {data}")
-        logging.warning(f"ТИП ОБНОВЛЕНИЯ: {data.get('message')}")
-        update = Update.de_json(data, bot)
-        logging.warning("==> UPDATE СОБРАН")
-        application.update_queue.put_nowait(update)
-        logging.warning("==> UPDATE ДОБАВЛЕН В ОЧЕРЕДЬ")
-    except Exception as e:
-        logging.warning(f"==> ОШИБКА В WEBHOOK: {e}")
-    return "ok"
-
-# Установка Webhook
-async def setup():
-    await bot.delete_webhook()
-    await bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
-
-# Асинхронный запуск
-def run_async():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    print("==> Запуск setup()")
-    loop.run_until_complete(setup())
-    print("==> SETUP завершён")
+    # Flask на фоне
+    import threading
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))).start()
 
-    print("==> Инициализация Telegram-приложения")
-    loop.run_until_complete(application.initialize())
-    print("==> Application initialized")
-
-    print("==> Старт Telegram-приложения")
-    loop.run_until_complete(application.start())
-    print("==> Application started FULLY")
-
-threading.Thread(target=run_async).start()
-
-# Flask-сервер
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    loop.run_until_complete(main())
