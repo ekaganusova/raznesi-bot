@@ -13,7 +13,7 @@ from telegram.ext import (
 )
 from openai import OpenAI
 
-# Настройки логирования
+# Настройки логов
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s — %(levelname)s — %(message)s"
@@ -22,44 +22,48 @@ logging.basicConfig(
 # Flask-приложение
 app = Flask(__name__)
 
+# Жёстко заданный webhook
+WEBHOOK_URL = "https://raznesi-bot.onrender.com"
+
 # Переменные окружения
 BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
-OWNER_ID = os.environ.get("OWNER_ID")
-WEBHOOK_URL = "https://raznesi-bot.onrender.com"
-    
+
 # Telegram Application
 bot = Bot(token=BOT_TOKEN)
 application = Application.builder().token(BOT_TOKEN).build()
 
-# Обработчик команды /start
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог.")
+    logging.warning("==> ОБРАБОТКА /start")
+    await update.message.reply_text("Привет! Напиши свою идею, и я устрою ей разнос как маркетолог.")
 
-# Обработчик текстовых сообщений
+# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
-    chat_id = update.message.chat_id
-    logging.warning(f"ПОЛУЧЕНО: {idea}")
+    logging.warning(f"ПОЛУЧЕНО СООБЩЕНИЕ: {idea}")
+
     try:
         logging.warning("GPT: отправляю запрос...")
-        logging.warning(f"OPENAI_KEY: {OPENAI_KEY}")
+        logging.warning(f"OPENAI_KEY: {'есть' if OPENAI_KEY else 'НЕТ'}")
 
         client = OpenAI(api_key=OPENAI_KEY)
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Ты — требовательный маркетолог. Отвечай строго, по делу и с юмором."},
-                {"role": "user", "content": idea}
+                {"role": "user", "content": f"Идея: {idea}"}
             ]
         )
         answer = response.choices[0].message.content
+        logging.warning("GPT: ответ получен")
         await update.message.reply_text(answer)
+
     except Exception as e:
         import traceback
-        logging.error("Ошибка OpenAI:")
+        logging.error("ОШИБКА GPT:")
         logging.error(traceback.format_exc())
-        await update.message.reply_text("Что-то пошло не так. Попробуй позже.")
+        await update.message.reply_text("GPT сломался. Попробуй позже.")
 
 # Подключение обработчиков
 application.add_handler(CommandHandler("start", start))
@@ -68,24 +72,22 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 # Webhook настройка
 async def setup():
     await bot.delete_webhook()
-    await bot.set_webhook(url="https://raznesi-bot.onrender.com/webhook")
+    await bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
 
-# Маршрут для проверки
 @app.route("/", methods=["GET"])
-def home():
-    return "ok"
+def index():
+    return "OK"
 
-# Webhook приёмник
-@app.route(f"/webhook", methods=["POST"])
-async def telegram_webhook():
+@app.route("/webhook", methods=["POST"])
+async def webhook():
     try:
-        logging.warning("==> ВХОД В WEBHOOK")
-        update = Update.de_json(request.get_json(force=True), bot)
-        logging.warning(f"ПОЛУЧЕН ОБНОВЛЕНИЕ: {request.get_json(force=True)}")
+        data = request.get_json(force=True)
+        logging.warning("==> ПОЛУЧЕН WEBHOOK")
+        logging.warning(data)
+        update = Update.de_json(data, bot)
         application.update_queue.put_nowait(update)
-        logging.warning("==> ДОБАВЛЕН В ОЧЕРЕДЬ")
     except Exception as e:
-        logging.error("Ошибка при обработке запроса:")
+        logging.error("Ошибка webhook:")
         logging.error(e)
     return "ok"
 
@@ -96,10 +98,11 @@ def run_async():
     loop.run_until_complete(setup())
     loop.run_until_complete(application.initialize())
     loop.run_until_complete(application.start())
-    loop.run_until_complete(application.updater.start_polling())
 
 # Запуск
 if __name__ == "__main__":
     logging.warning("==> ЗАПУСК ПРИЛОЖЕНИЯ")
     threading.Thread(target=run_async).start()
     app.run(host="0.0.0.0", port=10000)
+
+        
