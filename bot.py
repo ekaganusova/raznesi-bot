@@ -10,23 +10,31 @@ from telegram.ext import (
     filters
 )
 from flask import Flask, request
+from telegram.ext import Application
+import threading
+import asyncio
 
-# Переменные
+# Переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_KEY = os.getenv("OPENAI_KEY")
 WEBHOOK_URL = "https://raznesi-bot.onrender.com"
 
-# Конфигурация
 openai.api_key = OPENAI_KEY
+
+# Логирование
 logging.basicConfig(level=logging.INFO)
 
+# Flask-сервер для Webhook
 app = Flask(__name__)
 bot = Bot(token=TELEGRAM_TOKEN)
 
-# Хендлеры
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог.")
+    await update.message.reply_text(
+        "Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог."
+    )
 
+# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
     print(f"ПОЛУЧЕНО: {user_input}")
@@ -57,16 +65,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(answer)
     except Exception as e:
         logging.error(f"Ошибка OpenAI: {e}")
+        print(f"ОШИБКА GPT: {e}")
         await update.message.reply_text("Что-то пошло не так. Попробуй позже.")
 
-# Инициализация Telegram-бота
-from telegram.ext import Application
-
+# Telegram Application
 application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Устанавливаем Webhook
+# Flask маршруты
 @app.route("/")
 def index():
     return "Разнеси работает!"
@@ -78,13 +85,12 @@ def webhook():
         application.update_queue.put_nowait(update)
         return "ok"
 
+# Установка Webhook
 async def setup():
     await bot.delete_webhook()
     await bot.set_webhook(url=f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}")
 
-import threading
-import asyncio
-
+# Асинхронный запуск
 def run_async():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -94,5 +100,6 @@ def run_async():
 
 threading.Thread(target=run_async).start()
 
+# Запуск Flask-сервера
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
