@@ -47,20 +47,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Произошла ошибка. Попробуй позже.")
         logging.error(f"Ошибка OpenAI: {e}")
 
-def main():
-    import asyncio
-    from telegram import Bot
+import asyncio
+from telegram import Bot
 
-    async def init_bot():
-        bot = Bot(token=TELEGRAM_TOKEN)
-        await bot.delete_webhook(drop_pending_updates=True)
-
-    asyncio.run(init_bot())
+async def main():
+    bot = Bot(token=TELEGRAM_TOKEN)
+    await bot.delete_webhook(drop_pending_updates=True)
 
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.run_polling()
+
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+    await app.updater.idle()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
