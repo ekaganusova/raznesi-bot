@@ -27,8 +27,7 @@ BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
 OWNER_ID = os.environ.get("OWNER_ID")
 WEBHOOK_URL = "https://raznesi-bot.onrender.com"
-    await bot.set_webhook(url="https://raznesi-bot.onrender.com/webhook")
-
+    
 # Telegram Application
 bot = Bot(token=BOT_TOKEN)
 application = Application.builder().token(BOT_TOKEN).build()
@@ -69,7 +68,7 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 # Webhook настройка
 async def setup():
     await bot.delete_webhook()
-    await bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
+    await bot.set_webhook(url="https://raznesi-bot.onrender.com/webhook")
 
 # Маршрут для проверки
 @app.route("/", methods=["GET"])
