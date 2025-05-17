@@ -75,8 +75,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.warning("GPT: ответ получен")
         await update.message.reply_text(answer)
 
-    except Exception as e:
-        logging.error(f"Ошибка OpenAI: {e}")
+        except Exception as e:
+        import traceback
+        logging.error("Ошибка OpenAI:")
+        logging.error(traceback.format_exc())
         await update.message.reply_text("Что-то пошло не так. Попробуй позже.")
 
 # Обработчики
