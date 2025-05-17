@@ -78,14 +78,15 @@ async def setup():
 def index():
     return "OK"
 
+# Синхронный webhook
 @app.route("/webhook", methods=["POST"])
-async def webhook():
+def webhook():
     try:
         data = request.get_json(force=True)
         logging.warning("==> ПОЛУЧЕН WEBHOOK")
         logging.warning(data)
         update = Update.de_json(data, bot)
-        application.update_queue.put_nowait(update)
+        asyncio.run(application.update_queue.put(update))
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(e)
@@ -104,5 +105,3 @@ if __name__ == "__main__":
     logging.warning("==> ЗАПУСК ПРИЛОЖЕНИЯ")
     threading.Thread(target=run_async).start()
     app.run(host="0.0.0.0", port=10000)
-
-        
