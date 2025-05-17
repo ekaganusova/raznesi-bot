@@ -83,7 +83,9 @@ def index():
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 def webhook():
     if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), bot)
+        data = request.get_json(force=True)
+        print(f"ПОЛУЧЕН ОБНОВЛЕНИЕ: {data}")
+        update = Update.de_json(data, bot)
         application.update_queue.put_nowait(update)
         return "ok"
 
