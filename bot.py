@@ -61,7 +61,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
 
     try:
-        logging.warning("GPT: отправляю запрос...")
+        logging.warning(f"OPENAI_KEY: {OPENAI_KEY}")
 
         client = OpenAI(api_key=OPENAI_KEY)
 
