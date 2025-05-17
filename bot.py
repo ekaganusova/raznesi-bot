@@ -81,26 +81,25 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 def index():
     return "Разнеси работает!"
 
-@app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def webhook():
-    if request.method == "POST":
-        print("==> ВХОД В WEBHOOK")
-        try:
-            data = request.get_json(force=True)
-            print(f"ПОЛУЧЕН ОБНОВЛЕНИЕ: {data}")
-            print(f"ТИП ОБНОВЛЕНИЯ: {data.get('message')}")
-            update = Update.de_json(data, bot)
-            print("==> UPDATE СОБРАН")
-            application.update_queue.put_nowait(update)
-            print("==> UPDATE ДОБАВЛЕН В ОЧЕРЕДЬ")
-        except Exception as e:
-            print(f"==> ОШИБКА В WEBHOOK: {e}")
-        return "ok"
+    print("==> ВХОД В WEBHOOK")
+    try:
+        data = request.get_json(force=True)
+        print(f"ПОЛУЧЕН ОБНОВЛЕНИЕ: {data}")
+        print(f"ТИП ОБНОВЛЕНИЯ: {data.get('message')}")
+        update = Update.de_json(data, bot)
+        print("==> UPDATE СОБРАН")
+        application.update_queue.put_nowait(update)
+        print("==> UPDATE ДОБАВЛЕН В ОЧЕРЕДЬ")
+    except Exception as e:
+        print(f"==> ОШИБКА В WEBHOOK: {e}")
+    return "ok"
 
 # Настройка Webhook
 async def setup():
     await bot.delete_webhook()
-    await bot.set_webhook(url=f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}")
+    await bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
 
 # Асинхронный запуск
 def run_async():
