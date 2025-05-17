@@ -1,21 +1,36 @@
 import logging
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
-import openai
 import os
+import openai
+from telegram import Update, Bot
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters
+)
+import asyncio
 
-# Вставляем токены
+# Переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_KEY = os.getenv("OPENAI_KEY")
 OWNER_ID = os.getenv("OWNER_ID")
 
 openai.api_key = OPENAI_KEY
 
-logging.basicConfig(level=logging.INFO)
+# Логирование
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я бот Екатерины. Напиши свою идею, и я скажу, в чём она слаба — и как можно лучше.")
+    await update.message.reply_text(
+        "Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог."
+    )
 
+# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
 
@@ -27,7 +42,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 3. Ошибка упаковки — [твой ответ]
 4. Предложение улучшения — [твой ответ]
 
-Заверши фразой в духе: "Уровень боли: [оценка от 1 до 10]. Хочешь персональный разнос — пиши @ekaterina_ganusova".
+Заверши фразой: "Уровень боли: [оценка от 1 до 10]. Хочешь персональный разнос — пиши @ekaterina_ganusova".
 
 Текст пользователя: {user_input}
 """
@@ -36,7 +51,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "Ты маркетолог Екатерина. Пиши уверенно, дерзко, коротко, с юмором."},
+                {"role": "system", "content": "Ты дерзкий, уверенный маркетолог Екатерина. Пиши с юмором, кратко, метко."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=500,
@@ -47,9 +62,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Произошла ошибка. Попробуй позже.")
         logging.error(f"Ошибка OpenAI: {e}")
 
-import asyncio
-from telegram import Bot
-
+# Асинхронный запуск
 async def main():
     bot = Bot(token=TELEGRAM_TOKEN)
     await bot.delete_webhook(drop_pending_updates=True)
@@ -65,3 +78,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
