@@ -122,3 +122,12 @@ def run_async():
 if __name__ == "__main__":
     threading.Thread(target=run_async).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
+# Обработчики Telegram-команд
+application.add_handler(CommandHandler("start", start))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+# Webhook настройка
+async def setup():
+    await bot.delete_webhook()
+    await bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
