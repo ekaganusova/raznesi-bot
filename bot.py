@@ -60,8 +60,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Текст пользователя: {user_input}
 """
 
-    try:
+        try:
         logging.warning("GPT: отправляю запрос...")
+
+        client = OpenAI(api_key=OPENAI_KEY)
 
         response = client.chat.completions.create(
             model="gpt-4",
@@ -75,7 +77,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.warning("GPT: ответ получен")
         await update.message.reply_text(answer)
 
-        except Exception as e:
+    except Exception as e:
         import traceback
         logging.error("Ошибка OpenAI:")
         logging.error(traceback.format_exc())
