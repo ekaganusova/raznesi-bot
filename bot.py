@@ -26,7 +26,8 @@ app = Flask(__name__)
 BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
 OWNER_ID = os.environ.get("OWNER_ID")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+WEBHOOK_URL = "https://raznesi-bot.onrender.com"
+    await bot.set_webhook(url="https://raznesi-bot.onrender.com/webhook")
 
 # Telegram Application
 bot = Bot(token=BOT_TOKEN)
