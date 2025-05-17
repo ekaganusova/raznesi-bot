@@ -1,5 +1,6 @@
 import os
 import openai
+from openai import OpenAI
 import logging
 from telegram import Update
 from telegram.ext import (
@@ -46,9 +47,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Текст пользователя: {user_input}
 """
 
-    try:
+        try:
         logging.warning("GPT: отправляю запрос...")
-        response = openai.ChatCompletion.create(
+
+        client = openai.OpenAI(api_key=OPENAI_KEY)
+
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "Ты дерзкий, уверенный маркетолог Екатерина. Пиши с юмором, кратко, метко."},
