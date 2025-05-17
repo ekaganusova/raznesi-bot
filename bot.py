@@ -1,7 +1,9 @@
 import logging
 import os
 import openai
-from telegram import Update, Bot
+import asyncio
+import threading
+from telegram import Bot, Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -9,7 +11,8 @@ from telegram.ext import (
     ContextTypes,
     filters
 )
-import asyncio
+import http.server
+import socketserver
 
 # Переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -19,18 +22,13 @@ OWNER_ID = os.getenv("OWNER_ID")
 openai.api_key = OPENAI_KEY
 
 # Логирование
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+logging.basicConfig(level=logging.INFO)
 
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог."
-    )
+    await update.message.reply_text("Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог.")
 
-# Обработка сообщений
+# Обработка входящих сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
 
@@ -59,10 +57,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         answer = response.choices[0].message.content
         await update.message.reply_text(answer)
     except Exception as e:
-        await update.message.reply_text("Произошла ошибка. Попробуй позже.")
         logging.error(f"Ошибка OpenAI: {e}")
+        await update.message.reply_text("Произошла ошибка. Попробуй позже.")
 
-# Асинхронный запуск
+# Заглушка для Render (порт)
+def keep_render_happy():
+    PORT = int(os.environ.get("PORT", 10000))
+    Handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+        print(f"Dummy server started on port {PORT}")
+        httpd.serve_forever()
+
+threading.Thread(target=keep_render_happy, daemon=True).start()
+
+# Основной запуск
 async def main():
     bot = Bot(token=TELEGRAM_TOKEN)
     await bot.delete_webhook(drop_pending_updates=True)
@@ -78,15 +86,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-import http.server
-import socketserver
-import threading
-
-def keep_render_happy():
-    PORT = int(os.environ.get('PORT', 10000))
-    Handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
-        print(f"Dummy server started on port {PORT}")
-        httpd.serve_forever()
-
-threading.Thread(target=keep_render_happy, daemon=True).start()
