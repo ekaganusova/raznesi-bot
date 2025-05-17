@@ -84,10 +84,17 @@ def index():
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 def webhook():
     if request.method == "POST":
-        data = request.get_json(force=True)
-        print(f"ПОЛУЧЕН ОБНОВЛЕНИЕ: {data}")
-        update = Update.de_json(data, bot)
-        application.update_queue.put_nowait(update)
+        print("==> ВХОД В WEBHOOK")
+        try:
+            data = request.get_json(force=True)
+            print(f"ПОЛУЧЕН ОБНОВЛЕНИЕ: {data}")
+            print(f"ТИП ОБНОВЛЕНИЯ: {data.get('message')}")
+            update = Update.de_json(data, bot)
+            print("==> UPDATE СОБРАН")
+            application.update_queue.put_nowait(update)
+            print("==> UPDATE ДОБАВЛЕН В ОЧЕРЕДЬ")
+        except Exception as e:
+            print(f"==> ОШИБКА В WEBHOOK: {e}")
         return "ok"
 
 # Настройка Webhook
