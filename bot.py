@@ -24,7 +24,7 @@ openai.api_key = OPENAI_KEY
 # Логирование
 logging.basicConfig(level=logging.INFO)
 
-# Flask-сервер
+# Flask
 app = Flask(__name__)
 bot = Bot(token=TELEGRAM_TOKEN)
 
@@ -34,7 +34,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог."
     )
 
-# Обработка сообщений
+# Обработка входящих сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
     print(f"ПОЛУЧЕНО: {user_input}")
@@ -76,27 +76,27 @@ application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Webhook вход
+# Webhook-обработчик
 @app.route("/")
 def index():
     return "Разнеси работает!"
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    print("==> ВХОД В WEBHOOK")
+    logging.warning("==> ВХОД В WEBHOOK")
     try:
         data = request.get_json(force=True)
-        print(f"ПОЛУЧЕН ОБНОВЛЕНИЕ: {data}")
-        print(f"ТИП ОБНОВЛЕНИЯ: {data.get('message')}")
+        logging.warning(f"ПОЛУЧЕН ОБНОВЛЕНИЕ: {data}")
+        logging.warning(f"ТИП ОБНОВЛЕНИЯ: {data.get('message')}")
         update = Update.de_json(data, bot)
-        print("==> UPDATE СОБРАН")
+        logging.warning("==> UPDATE СОБРАН")
         application.update_queue.put_nowait(update)
-        print("==> UPDATE ДОБАВЛЕН В ОЧЕРЕДЬ")
+        logging.warning("==> UPDATE ДОБАВЛЕН В ОЧЕРЕДЬ")
     except Exception as e:
-        print(f"==> ОШИБКА В WEBHOOK: {e}")
+        logging.warning(f"==> ОШИБКА В WEBHOOK: {e}")
     return "ok"
 
-# Настройка Webhook
+# Установка Webhook
 async def setup():
     await bot.delete_webhook()
     await bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
@@ -111,6 +111,6 @@ def run_async():
 
 threading.Thread(target=run_async).start()
 
-# Запуск сервера Flask
+# Flask-сервер
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
