@@ -30,6 +30,7 @@ bot = Bot(token=TELEGRAM_TOKEN)
 
 # /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("==> ОБРАБОТКА КОМАНДЫ /start")
     await update.message.reply_text(
         "Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог."
     )
