@@ -106,9 +106,18 @@ async def setup():
 def run_async():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+
+    print("==> Запуск setup()")
     loop.run_until_complete(setup())
+    print("==> SETUP завершён")
+
+    print("==> Инициализация Telegram-приложения")
     loop.run_until_complete(application.initialize())
+    print("==> Application initialized")
+
+    print("==> Старт Telegram-приложения")
     loop.run_until_complete(application.start())
+    print("==> Application started FULLY")
 
 threading.Thread(target=run_async).start()
 
