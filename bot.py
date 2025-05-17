@@ -1,7 +1,7 @@
 import os
 import openai
 import logging
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -9,28 +9,17 @@ from telegram.ext import (
     ContextTypes,
     filters
 )
-from flask import Flask
-import asyncio
 
-# Переменные окружения
+# Настройка логирования (для Render)
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s — %(levelname)s — %(message)s",
+)
+
+# Ключи
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_KEY = os.getenv("OPENAI_KEY")
-
 openai.api_key = OPENAI_KEY
-
-# Логирование
-logging.basicConfig(level=logging.INFO)
-
-# Flask для Render
-app = Flask(__name__)
-
-@app.route("/")
-def index():
-    return "Разнеси работает!"
-
-# Telegram-приложение
-bot = Bot(token=TELEGRAM_TOKEN)
-application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
 # /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -39,7 +28,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог."
     )
 
-# Обработка сообщений
+# GPT-разнос
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
     logging.warning(f"ПОЛУЧЕНО: {user_input}")
@@ -75,24 +64,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"Ошибка OpenAI: {e}")
         await update.message.reply_text("Что-то пошло не так. Попробуй позже.")
 
-# Регистрация хендлеров
-application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-# Запуск Flask и Telegram
+# Запуск бота
 if __name__ == "__main__":
-    async def main():
-        await application.initialize()
-        await application.start()
-        await application.updater.start_polling()
-        logging.warning("==> Telegram бот запущен через polling")
-        await application.updater.idle()
+    logging.warning("==> ЗАПУСК ПРИЛОЖЕНИЯ")
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Flask на фоне
-    import threading
-    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))).start()
-
-    loop.run_until_complete(main())
+    app.run_polling()
