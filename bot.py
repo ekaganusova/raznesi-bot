@@ -24,11 +24,11 @@ openai.api_key = OPENAI_KEY
 # Логирование
 logging.basicConfig(level=logging.INFO)
 
-# Flask-сервер для Webhook
+# Flask-сервер
 app = Flask(__name__)
 bot = Bot(token=TELEGRAM_TOKEN)
 
-# Команда /start
+# /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Привет! Я бот Екатерины. Напиши свою идею, и я устрою ей разнос как маркетолог."
@@ -52,7 +52,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Текст пользователя: {user_input}
 """
 
-            try:
+    try:
         print("GPT: отправляю запрос...")
         response = openai.ChatCompletion.create(
             model="gpt-4",
@@ -71,12 +71,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"ОШИБКА GPT: {e}")
         await update.message.reply_text("Что-то пошло не так. Попробуй позже.")
 
-# Telegram Application
+# Telegram-приложение
 application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Flask маршруты
+# Webhook вход
 @app.route("/")
 def index():
     return "Разнеси работает!"
@@ -90,7 +90,7 @@ def webhook():
         application.update_queue.put_nowait(update)
         return "ok"
 
-# Установка Webhook
+# Настройка Webhook
 async def setup():
     await bot.delete_webhook()
     await bot.set_webhook(url=f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}")
@@ -105,6 +105,6 @@ def run_async():
 
 threading.Thread(target=run_async).start()
 
-# Запуск Flask-сервера
+# Запуск сервера Flask
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
