@@ -34,19 +34,33 @@ bot = Bot(token=BOT_TOKEN)
 application = Application.builder().token(BOT_TOKEN).build()
 
 # Команда /start
+from telegram import ReplyKeyboardMarkup
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.warning("==> ОБРАБОТКА /start")
-    await update.message.reply_text("Привет! Напиши свою идею, и я устрою ей разнос как маркетолог.")
+    welcome_text = (
+        "Привет!\n"
+        "Я бот, созданный с помощью AI, чтобы проверять бизнес-идеи на прочность. "
+        "Напиши свою — и я устрою ей разбор как маркетолог: жёстко, с юмором и по делу.\n\n"
+        "Как использовать:\n"
+        "1. Просто напиши свою идею.\n"
+        "2. Получи разнос."
+    )
+    await update.message.reply_text(welcome_text)
 
 # Обработка сообщений
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
+    username = update.message.from_user.username
     logging.warning(f"ПОЛУЧЕНО СООБЩЕНИЕ: {idea}")
+
+    # Уведомление о том, что бот обрабатывает
+    await update.message.reply_text("Оцениваю запрос…")
 
     try:
         logging.warning("GPT: отправляю запрос...")
-        logging.warning(f"OPENAI_KEY: {'есть' if OPENAI_KEY else 'НЕТ'}")
-
         client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENAI_KEY
@@ -57,16 +71,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             messages=[
                 {"role": "system", "content": "Ты — требовательный маркетолог. Отвечай строго, по делу и с юмором."},
                 {"role": "user", "content": f"Идея: {idea}"}
-            ],
-            extra_headers={
-                "HTTP-Referer": "https://raznesi-bot.onrender.com",
-                "X-Title": "raznesi_bot"
-            }
+            ]
         )
-
         answer = response.choices[0].message.content
         logging.warning("GPT: ответ получен")
-        await update.message.reply_text(answer)
+
+        # Сохранение в Google Sheets
+        save_to_sheet(username, idea)
+
+        # Кнопка «Хочу такого же бота»
+        button = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Хочу такого же бота", url="https://t.me/ekaterina_ganusova?start=want_bot")]
+        ])
+
+        await update.message.reply_text(answer, reply_markup=button)
 
     except Exception as e:
         import traceback
