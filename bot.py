@@ -47,14 +47,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.warning("GPT: отправляю запрос...")
         logging.warning(f"OPENAI_KEY: {'есть' if OPENAI_KEY else 'НЕТ'}")
 
-        client = OpenAI(api_key=OPENAI_KEY)
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=OPENAI_KEY
+        )
+
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="openai/gpt-4o",
             messages=[
                 {"role": "system", "content": "Ты — требовательный маркетолог. Отвечай строго, по делу и с юмором."},
                 {"role": "user", "content": f"Идея: {idea}"}
-            ]
+            ],
+            extra_headers={
+                "HTTP-Referer": "https://raznesi-bot.onrender.com",
+                "X-Title": "raznesi_bot"
+            }
         )
+
         answer = response.choices[0].message.content
         logging.warning("GPT: ответ получен")
         await update.message.reply_text(answer)
@@ -78,7 +87,7 @@ async def setup():
 def index():
     return "OK"
 
-# Синхронный webhook с process_update
+# Обработка webhook-запроса
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
