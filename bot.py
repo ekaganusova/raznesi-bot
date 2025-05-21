@@ -86,13 +86,13 @@ def index():
     return "OK"
 
 @app.route("/webhook", methods=["POST"])
-async def telegram_webhook():
+def telegram_webhook():
     try:
         data = request.get_json(force=True)
         logging.warning("==> ПОЛУЧЕН WEBHOOK")
         logging.warning(data)
         update = Update.de_json(data, application.bot)
-        await application.process_update(update)
+        asyncio.run(application.process_update(update))
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(e)
