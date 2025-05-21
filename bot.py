@@ -78,9 +78,9 @@ def index():
 def webhook():
     try:
         data = request.get_json(force=True)
-        update = Update.de_json(data, application.bot)
-        loop.call_soon_threadsafe(asyncio.create_task, application.process_update(update))
         logging.warning("==> ПОЛУЧЕН WEBHOOK")
+        update = Update.de_json(data, application.bot)
+        asyncio.run_coroutine_threadsafe(application.process_update(update), loop)
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(e)
