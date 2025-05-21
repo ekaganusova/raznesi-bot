@@ -2,8 +2,9 @@ import os
 import logging
 import threading
 import asyncio
+import gspread
 from flask import Flask, request
-from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -19,75 +20,73 @@ logging.basicConfig(
     format="%(asctime)s — %(levelname)s — %(message)s"
 )
 
+# Flask-приложение
 app = Flask(__name__)
 
-WEBHOOK_URL = "https://raznesi-bot.onrender.com"
+# Переменные окружения
 BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
+GSHEET_KEY = os.environ.get("GSHEET_KEY")
+SHEET_NAME = os.environ.get("SHEET_NAME")
+WEBHOOK_URL = "https://raznesi-bot.onrender.com"
 
-bot = Bot(token=BOT_TOKEN)
-
-async def post_init(application: Application):
-    await application.bot.initialize()
-    logging.warning("==> BOT ИНИЦИАЛИЗИРОВАН")
-
-application = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+# Telegram Application
+application = Application.builder().token(BOT_TOKEN).build()
 
 # Приветствие
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.warning("==> ОБРАБОТКА /start")
-    keyboard = [
-        [InlineKeyboardButton("Хочу такого же бота", url="https://t.me/ekaterina_ganusova?start=bot_request")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    welcome_message = (
-        "Привет!\n"
-        "Я бот, созданный с помощью AI, чтобы проверять бизнес-идеи на прочность. "
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Хочу такого же бота", url="https://t.me/ekaterina_ganusova?start=bot")]
+    ])
+    await update.message.reply_text(
+        "Привет!\nЯ бот, созданный с помощью AI, чтобы проверять бизнес-идеи на прочность. "
         "Напиши свою — и я устрою ей разбор как маркетолог: жёстко, с юмором и по делу.\n\n"
         "Как использовать:\n"
         "1. Просто напиши свою идею.\n"
-        "2. Получи разнос."
+        "2. Получи разнос.",
+        reply_markup=keyboard
     )
 
-    await update.message.reply_text(welcome_message, reply_markup=reply_markup)
+# Сохраняем в Google Sheets
+def save_to_sheets(username: str, text: str):
+    try:
+        gc = gspread.service_account(filename=GSHEET_KEY)
+        sh = gc.open(SHEET_NAME)
+        worksheet = sh.sheet1
+        worksheet.append_row([username, text])
+        logging.warning("Сохранено в Google Sheets")
+    except Exception as e:
+        logging.error(f"Ошибка сохранения в Google Sheets: {e}")
 
 # Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
-    user = update.effective_user
-    username = user.username or f"id_{user.id}"
-    logging.warning(f"ПОЛУЧЕНО СООБЩЕНИЕ: {idea} от {username}")
+    username = update.message.from_user.username
+    logging.warning(f"ПОЛУЧЕНО СООБЩЕНИЕ: {idea}")
+
+    # Сообщение "Оцениваю..."
+    await update.message.reply_text("Оцениваю запрос...")
+
+    # Сохранение
+    save_to_sheets(username or "no_username", idea)
 
     try:
-        await update.message.reply_text("Оцениваю запрос...")
-
-        client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=OPENAI_KEY
-        )
-
+        client = OpenAI(api_key=OPENAI_KEY)
         response = client.chat.completions.create(
             model="openai/gpt-4o",
             messages=[
                 {"role": "system", "content": "Ты — требовательный маркетолог. Отвечай строго, по делу и с юмором."},
                 {"role": "user", "content": f"Идея: {idea}"}
-            ],
-            extra_headers={
-                "HTTP-Referer": "https://t.me/raznesi_ai_bot",
-                "X-Title": "Разнеси Бот"
-            }
+            ]
         )
-
         answer = response.choices[0].message.content
-        keyboard = [
-            [InlineKeyboardButton("Хочу такого же бота", url="https://t.me/ekaterina_ganusova?start=bot_request")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(answer, reply_markup=reply_markup)
 
-        # Сохраняем в таблицу, если хочешь включить:
-        # save_to_sheet(username, idea)
+        # Кнопки после ответа
+        buttons = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Хочу такого же бота", url="https://t.me/ekaterina_ganusova?start=bot")]
+        ])
+        await update.message.reply_text(answer, reply_markup=buttons)
 
     except Exception as e:
         import traceback
@@ -95,32 +94,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(traceback.format_exc())
         await update.message.reply_text("GPT сломался. Попробуй позже.")
 
-# Обработчики
+# Подключение обработчиков
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Webhook
+# Webhook настройка
 async def setup():
-    await bot.delete_webhook()
-    await bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
+    await application.bot.delete_webhook()
+    await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
 
 @app.route("/", methods=["GET"])
 def index():
     return "OK"
 
+# Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
         data = request.get_json(force=True)
         logging.warning("==> ПОЛУЧЕН WEBHOOK")
         logging.warning(data)
-        update = Update.de_json(data, bot)
+        update = Update.de_json(data, application.bot)
         asyncio.run(application.process_update(update))
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(e)
     return "ok"
 
+# Асинхронный запуск
 def run_async():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
