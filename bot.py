@@ -103,7 +103,7 @@ def webhook():
         data = request.get_json(force=True)
         logging.warning("==> ПОЛУЧЕН WEBHOOK")
         logging.warning(data)
-        update = Update.de_json(data, application.bot)
+        update = Update.de_json(data, bot)
 
         def process():
             loop = asyncio.new_event_loop()
