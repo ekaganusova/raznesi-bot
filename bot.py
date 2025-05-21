@@ -104,7 +104,7 @@ def webhook():
         logging.warning("==> ПОЛУЧЕН WEBHOOK")
         logging.warning(data)
         update = Update.de_json(data, application.bot)  # <-- вот эта строка
-        asyncio.run(application.process_update(update))
+        asyncio.run_coroutine_threadsafe(application.process_update(update), application._loop)
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(e)
