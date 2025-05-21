@@ -6,7 +6,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     ContextTypes,
-    filters,
+    filters
 )
 from openai import OpenAI
 
@@ -16,19 +16,16 @@ logging.basicConfig(
     format="%(asctime)s — %(levelname)s — %(message)s"
 )
 
-# Переменные
 BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
 WEBHOOK_URL = "https://raznesi-bot.onrender.com"
 
-# Telegram и OpenRouter
 application = Application.builder().token(BOT_TOKEN).build()
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENAI_KEY
 )
 
-# /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("Хочу такого же бота", url="https://t.me/ekaterina_ganusova")],
@@ -46,7 +43,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup
     )
 
-# Ответ
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     await update.message.reply_text("Оцениваю запрос...")
@@ -63,20 +59,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "X-Title": "raznesi_bot"
             }
         )
-        answer = response.choices[0].message.content
-        await update.message.reply_text(answer)
-
+        await update.message.reply_text(response.choices[0].message.content)
     except Exception as e:
         import traceback
         logging.error("GPT ОШИБКА:")
         logging.error(traceback.format_exc())
         await update.message.reply_text("GPT сломался. Попробуй позже.")
 
-# Обработчики
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Запуск
 if __name__ == "__main__":
     logging.warning("==> ЗАПУСК БОТА")
     application.run_webhook(
