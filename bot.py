@@ -55,7 +55,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Оцениваю запрос...")
 
     try:
+        logging.warning("==> GPT: создаю клиент")
         client = OpenAI(api_key=OPENAI_KEY)
+
+        logging.warning("==> GPT: отправляю запрос")
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -63,7 +66,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 {"role": "user", "content": f"Идея: {idea}"}
             ]
         )
+
         answer = response.choices[0].message.content
+        logging.warning(f"==> GPT: ответ получен — {answer}")
         await update.message.reply_text(answer)
 
     except Exception as e:
