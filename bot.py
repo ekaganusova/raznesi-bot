@@ -10,6 +10,8 @@ from telegram.ext import (
     filters
 )
 from openai import OpenAI
+import asyncio
+import threading
 
 # Логи
 logging.basicConfig(
@@ -28,7 +30,7 @@ WEBHOOK_URL = "https://raznesi-bot.onrender.com"
 # Telegram Application
 application = Application.builder().token(BOT_TOKEN).build()
 
-# Старт
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.warning("==> ОБРАБОТКА /start")
     keyboard = [
@@ -36,7 +38,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Отличный разбор, хочу больше", url="https://t.me/ekaterina_ganusova")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
     text = (
         "Привет!\n"
         "Я бот, созданный с помощью AI, чтобы проверять бизнес-идеи на прочность. "
@@ -47,7 +48,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(text, reply_markup=reply_markup)
 
-# Ответ на сообщение
+# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     logging.warning(f"ПОЛУЧЕНО: {idea}")
@@ -81,32 +82,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+# Flask index
 @app.route("/", methods=["GET"])
 def index():
     return "OK"
 
-def run_async_task(coroutine):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(coroutine)
-    loop.close()
-
+# Webhook
 @app.route("/webhook", methods=["POST"])
 def telegram_webhook():
     try:
         data = request.get_json(force=True)
-        logging.warning("==> ПОЛУЧЕН WEBHOOK")
-        logging.warning(data)
         update = Update.de_json(data, application.bot)
-
-        threading.Thread(target=run_async_task, args=(application.process_update(update),)).start()
-
+        application.create_task(application.process_update(update))
+        logging.warning("==> ПОЛУЧЕН WEBHOOK")
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(e)
     return "ok"
 
-async def setup_webhook():
+# Настройка webhook и запуск
+async def setup():
     await application.bot.delete_webhook()
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
     await application.initialize()
@@ -115,13 +110,5 @@ async def setup_webhook():
 if __name__ == "__main__":
     logging.warning("==> ЗАПУСК ПРИЛОЖЕНИЯ")
 
-    import threading
-    import asyncio
-
-    def run_bot():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(setup_webhook())
-
-    threading.Thread(target=run_bot).start()
+    threading.Thread(target=lambda: asyncio.run(setup())).start()
     app.run(host="0.0.0.0", port=10000)
