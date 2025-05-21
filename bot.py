@@ -36,7 +36,20 @@ application = Application.builder().token(BOT_TOKEN).build()
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.warning("==> ОБРАБОТКА /start")
-    await update.message.reply_text("Привет! Напиши свою идею, и я устрою ей разнос как маркетолог.")
+    keyboard = [
+        [InlineKeyboardButton("Хочу такого же бота", url="https://t.me/ekaterina_ganusova?start=bot")],
+        [InlineKeyboardButton("Отличный разбор, хочу больше", url="https://t.me/ekaterina_ganusova")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "Привет!\nЯ бот, созданный с помощью AI, чтобы проверять бизнес-идеи на прочность. "
+        "Напиши свою — и я устрою ей разнос как маркетолог: жёстко, с юмором и по делу.\n\n"
+        "Как использовать:\n"
+        "1. Просто напиши свою идею.✨\n"
+        "2. Подожди несколько секунд и получи разнос.🔥",
+        reply_markup=reply_markup
+    )
+
 
 # Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
