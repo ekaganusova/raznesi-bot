@@ -85,6 +85,12 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 def index():
     return "OK"
 
+def run_async_task(coroutine):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(coroutine)
+    loop.close()
+
 @app.route("/webhook", methods=["POST"])
 def telegram_webhook():
     try:
@@ -92,7 +98,9 @@ def telegram_webhook():
         logging.warning("==> ПОЛУЧЕН WEBHOOK")
         logging.warning(data)
         update = Update.de_json(data, application.bot)
-        asyncio.run(application.process_update(update))
+
+        threading.Thread(target=run_async_task, args=(application.process_update(update),)).start()
+
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(e)
