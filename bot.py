@@ -3,13 +3,13 @@ import logging
 import threading
 import asyncio
 from flask import Flask, request
-from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
     ContextTypes,
-    filters
+    filters,
 )
 from openai import OpenAI
 
@@ -22,7 +22,7 @@ logging.basicConfig(
 # Flask-приложение
 app = Flask(__name__)
 
-# Жёстко заданный webhook
+# Webhook
 WEBHOOK_URL = "https://raznesi-bot.onrender.com"
 
 # Переменные окружения
@@ -30,7 +30,6 @@ BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
 
 # Telegram Application
-bot = Bot(token=BOT_TOKEN)
 application = Application.builder().token(BOT_TOKEN).build()
 
 # Команда /start
@@ -54,11 +53,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     logging.warning(f"ПОЛУЧЕНО СООБЩЕНИЕ: {idea}")
+    await update.message.reply_text("Оцениваю запрос...")
 
     try:
-        logging.warning("GPT: отправляю запрос...")
-        logging.warning(f"OPENAI_KEY: {'есть' if OPENAI_KEY else 'НЕТ'}")
-
         client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENAI_KEY
@@ -92,8 +89,8 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 
 # Webhook настройка
 async def setup():
-    await bot.delete_webhook()
-    await bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
+    await application.bot.delete_webhook()
+    await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
 
 @app.route("/", methods=["GET"])
 def index():
@@ -106,7 +103,7 @@ def webhook():
         data = request.get_json(force=True)
         logging.warning("==> ПОЛУЧЕН WEBHOOK")
         logging.warning(data)
-        update = Update.de_json(data, bot)
+        update = Update.de_json(data, application.bot)
         asyncio.run(application.process_update(update))
     except Exception as e:
         logging.error("Ошибка webhook:")
@@ -117,8 +114,8 @@ def webhook():
 def run_async():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(setup())
     loop.run_until_complete(application.initialize())
+    loop.run_until_complete(setup())
     loop.run_until_complete(application.start())
 
 # Запуск
@@ -126,5 +123,3 @@ if __name__ == "__main__":
     logging.warning("==> ЗАПУСК ПРИЛОЖЕНИЯ")
     threading.Thread(target=run_async).start()
     app.run(host="0.0.0.0", port=10000)
-    
-    
