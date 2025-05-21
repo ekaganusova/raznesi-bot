@@ -34,20 +34,35 @@ WEBHOOK_URL = "https://raznesi-bot.onrender.com"
 application = Application.builder().token(BOT_TOKEN).build()
 
 # Приветствие
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.warning("==> ОБРАБОТКА /start")
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Хочу такого же бота", url="https://t.me/ekaterina_ganusova?start=bot")]
-    ])
-    await update.message.reply_text(
-        "Привет!\nЯ бот, созданный с помощью AI, чтобы проверять бизнес-идеи на прочность. "
+
+    if not update.message:
+        logging.warning("Нет update.message в /start")
+        return
+
+    text = (
+        "Привет!\n"
+        "Я бот, созданный с помощью AI, чтобы проверять бизнес-идеи на прочность. "
         "Напиши свою — и я устрою ей разбор как маркетолог: жёстко, с юмором и по делу.\n\n"
         "Как использовать:\n"
         "1. Просто напиши свою идею.\n"
-        "2. Получи разнос.",
-        reply_markup=keyboard
+        "2. Получи разнос."
     )
 
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "Хочу такого же бота",
+                url="https://t.me/ekaterina_ganusova?startapp=Привет! Хочу такого же бота"
+            )
+        ]
+    ])
+
+    await update.message.reply_text(text, reply_markup=keyboard)
 # Сохраняем в Google Sheets
 def save_to_sheets(username: str, text: str):
     try:
