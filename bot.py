@@ -93,7 +93,7 @@ def telegram_webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
-        asyncio.run_coroutine_threadsafe(application.process_update(update), application._loop)
+        asyncio.run_coroutine_threadsafe(application.process_update(update), application.event_loop)
         logging.warning("==> ПОЛУЧЕН WEBHOOK")
     except Exception as e:
         logging.error("Ошибка webhook:")
