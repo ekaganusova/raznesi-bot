@@ -38,11 +38,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(text, reply_markup=reply_markup)
 
-# Ответ на сообщение
-import requests
-
-# ...
-
 # Обработка текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
