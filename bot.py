@@ -1,24 +1,27 @@
 import os
 import logging
+import asyncio
+import threading
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from openai import OpenAI
-import asyncio
 
-# Логирование
-logging.basicConfig(level=logging.INFO, format="%(asctime)s — %(levelname)s — %(message)s")
+# Настройка логов
+logging.basicConfig(level=logging.WARNING, format="%(asctime)s — %(levelname)s — %(message)s")
 
 # Flask-приложение
 app = Flask(__name__)
 
-# Настройки
+# Константы
 BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
-WEBHOOK_URL = "https://raznesi-bot.onrender.com"  # замени на свой домен при необходимости
+WEBHOOK_URL = "https://raznesi-bot.onrender.com"
 
 # Telegram Application
 application = Application.builder().token(BOT_TOKEN).build()
+event_loop = asyncio.new_event_loop()
+application.loop = event_loop  # Присваиваем явно
 
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -38,10 +41,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(text, reply_markup=reply_markup)
 
-# Ответ на сообщение
+# Обработка текста
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     await update.message.reply_text("Оцениваю запрос...")
+
     try:
         client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENAI_KEY)
         response = client.chat.completions.create(
@@ -51,23 +55,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 {"role": "user", "content": f"Идея: {idea}"}
             ],
             extra_headers={
-                "HTTP-Referer": "https://raznesi-bot.onrender.com",
+                "HTTP-Referer": WEBHOOK_URL,
                 "X-Title": "raznesi_bot"
             }
         )
         answer = response.choices[0].message.content
         await update.message.reply_text(answer)
     except Exception as e:
+        import traceback
         logging.error("GPT ОШИБКА:")
-        logging.error(e)
+        logging.error(traceback.format_exc())
         await update.message.reply_text("GPT сломался. Попробуй позже.")
 
 # Обработчики
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Flask маршруты
-@app.route("/")
+# Маршруты Flask
+@app.route("/", methods=["GET"])
 def index():
     return "OK"
 
@@ -77,27 +82,25 @@ def webhook():
         data = request.get_json(force=True)
         logging.warning("==> ПОЛУЧЕН WEBHOOK")
         update = Update.de_json(data, application.bot)
-        asyncio.run(application.process_update(update))
+        asyncio.run_coroutine_threadsafe(application.process_update(update), application.loop)
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(e)
     return "ok"
 
-# Установка webhook
+# Настройка Webhook
 async def setup_webhook():
     logging.warning("==> НАСТРОЙКА ВЕБХУКА")
+    await application.initialize()
     await application.bot.delete_webhook()
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
-    await application.initialize()
     await application.start()
 
+# Запуск
 if __name__ == "__main__":
-    import threading
-
     def run_bot():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(setup_webhook())
+        asyncio.set_event_loop(event_loop)
+        event_loop.run_until_complete(setup_webhook())
 
     threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=10000)
