@@ -101,5 +101,18 @@ async def run():
     )
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(run())
+    logging.warning("==> ЗАПУСК БОТА")
+
+    import threading
+
+    def run_bot():
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(setup_webhook())
+
+    # запускаем setup в отдельном потоке
+    threading.Thread(target=run_bot).start()
+
+    # запускаем Flask, чтобы Render видел порт
+    app.run(host="0.0.0.0", port=10000)
