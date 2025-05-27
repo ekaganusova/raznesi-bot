@@ -46,7 +46,7 @@ import requests
 # Сообщения
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
-    await update.message.reply_text("Оцениваю запрос...")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Оцениваю запрос...")
     try:
         client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENAI_KEY)
         response = client.chat.completions.create(
