@@ -33,8 +33,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Напиши свою — и я устрою ей разнос как маркетолог: жёстко, с юмором и по делу.\n\n"
         "Как использовать:\n"
         "1. Просто напиши свою идею.\n"
-        "2. Получи разнос."
-        "3. Если есть вопросы или хочешь такого же бота - жми на кнопку👇🏻"
+        "2. Получи разнос.\n"
+        "3. Если есть вопросы или хочешь такого же бота — жми на кнопку👇🏻"
     )
     await update.message.reply_text(text, reply_markup=reply_markup)
 
@@ -46,24 +46,26 @@ import requests
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     await update.message.reply_text("Разношу запрос...подожди немного😉")
-
     try:
-        def fetch_response():
-            headers = {
-                "Authorization": f"Bearer {OPENAI_KEY}",
+        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENAI_KEY)
+        response = client.chat.completions.create(
+            model="openai/gpt-4o",
+            messages=[
+                {"role": "system", "content": "Ты — требовательный маркетолог. Отвечай строго, по делу и с юмором."},
+                {"role": "user", "content": f"Идея: {idea}"}
+            ],
+            extra_headers={
                 "HTTP-Referer": "https://raznesi-bot.onrender.com",
-                "X-Title": "raznesi_bot",
-                "Content-Type": "application/json"
+                "X-Title": "raznesi_bot"
             }
-            data = {
-                "model": "openai/gpt-4o",
-                "messages": [
-                    {"role": "system", "content": "Ты — требовательный маркетолог. Отвечай строго, по делу и с юмором."},
-                    {"role": "user", "content": f"Идея: {idea}"}
-                ]
-            }
-            response = requests.post("https://openrouter.ai/api/v1/chat/completions", json=data, headers=headers)
-            return response.json()["choices"][0]["message"]["content"]
+        )
+        answer = response.choices[0].message.content
+        await update.message.reply_text(answer)
+    except Exception as e:
+        import traceback
+        logging.error("GPT ОШИБКА:")
+        logging.error(traceback.format_exc())
+        await update.message.reply_text("GPT сломался. Попробуй позже.")
 
         # Запускаем синхронный запрос в отдельном потоке
         answer = await asyncio.to_thread(fetch_response)
