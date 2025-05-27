@@ -43,12 +43,20 @@ import requests
 
 # ...
 
-# Сообщения
+# Обработка текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="Оцениваю запрос...")
+    logging.warning(f"ПОЛУЧЕНО: {idea}")
+
     try:
-        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENAI_KEY)
+        # Отправляем предварительное сообщение через context.bot
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Оцениваю запрос...")
+
+        # Отправляем запрос в OpenRouter (GPT)
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=OPENAI_KEY,
+        )
         response = client.chat.completions.create(
             model="openai/gpt-4o",
             messages=[
@@ -60,24 +68,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "X-Title": "raznesi_bot"
             }
         )
-        answer = response.choices[0].message.content
-        answer += "\n\nОстались вопросы или ты уже всё понял? 🤭"
-        await update.message.reply_text(answer)
-    except Exception as e:
-        import traceback
-        logging.error("GPT ОШИБКА:")
-        logging.error(traceback.format_exc())
-        await update.message.reply_text("GPT сломался. Попробуй позже.")
-        
-        # Запускаем синхронный запрос в отдельном потоке
-        answer = await asyncio.to_thread(fetch_response)
-        await update.message.reply_text(answer)
+        answer = response.choices[0].message.content + "\n\nОстались вопросы или ты уже всё понял? 🤭"
+
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=answer)
 
     except Exception as e:
         import traceback
         logging.error("GPT ОШИБКА:")
         logging.error(traceback.format_exc())
-        await update.message.reply_text("GPT сломался. Попробуй позже.")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="GPT сломался. Попробуй позже.")
 
 # Обработчики
 application.add_handler(CommandHandler("start", start))
