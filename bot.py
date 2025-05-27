@@ -23,8 +23,7 @@ application = Application.builder().token(BOT_TOKEN).build()
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("Хочу такого же бота", url="https://t.me/ekaterina_ganusova")],
-        [InlineKeyboardButton("Отличный разбор, хочу больше", url="https://t.me/ekaterina_ganusova")]
+        [InlineKeyboardButton("🔥ЖМУ НА КНОПКУ🔥", url="https://t.me/ekaterina_ganusova")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -46,7 +45,7 @@ import requests
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
-    await update.message.reply_text("Оцениваю запрос...")
+    await update.message.reply_text("Разношу запрос...подожди немного😉")
 
     try:
         def fetch_response():
