@@ -1,4 +1,4 @@
 python-telegram-bot==20.7
-flask==2.3.3
+flask[async]==2.3.3
 requests
 openai==1.23.2
