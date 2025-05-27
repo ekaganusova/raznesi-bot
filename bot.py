@@ -83,6 +83,7 @@ def webhook():
         logging.warning("==> ПОЛУЧЕН WEBHOOK")
         update = Update.de_json(data, application.bot)
 
+        # Каждый раз создаём и закрываем новый event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(application.process_update(update))
@@ -91,7 +92,6 @@ def webhook():
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(e)
-
     return "ok"
     
 # Установка webhook
