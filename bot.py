@@ -1,10 +1,11 @@
 import os
 import logging
+import asyncio
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from openai import OpenAI
-import asyncio
+import requests
 
 # Логирование
 logging.basicConfig(level=logging.INFO, format="%(asctime)s — %(levelname)s — %(message)s")
@@ -15,7 +16,7 @@ app = Flask(__name__)
 # Настройки
 BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
-WEBHOOK_URL = "https://raznesi-bot.onrender.com"  # замени на свой домен при необходимости
+WEBHOOK_URL = "https://raznesi-bot.onrender.com"
 
 # Telegram Application
 application = Application.builder().token(BOT_TOKEN).build()
@@ -26,7 +27,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🔥ЖМУ НА КНОПКУ🔥", url="https://t.me/ekaterina_ganusova")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
     text = (
         "Привет!\n"
         "Я бот, созданный с помощью AI✨, чтобы проверять бизнес-идеи на прочность. "
@@ -39,20 +39,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, reply_markup=reply_markup)
 
 # Ответ на сообщение
-import requests
-
-# ...
-
-# Обработка текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     logging.warning(f"ПОЛУЧЕНО: {idea}")
-
     try:
-        # Отправляем предварительное сообщение через context.bot
         await context.bot.send_message(chat_id=update.effective_chat.id, text="Оцениваю запрос...")
-
-        # Отправляем запрос в OpenRouter (GPT)
         client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENAI_KEY,
@@ -69,9 +60,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
         )
         answer = response.choices[0].message.content + "\n\nОстались вопросы или ты уже всё понял? 🤭"
-
         await context.bot.send_message(chat_id=update.effective_chat.id, text=answer)
-
     except Exception as e:
         import traceback
         logging.error("GPT ОШИБКА:")
@@ -107,13 +96,13 @@ async def setup_webhook():
     await application.initialize()
     await application.start()
 
-if name == "m͟a͟i͟n͟":
+if __name__ == "__main__":
     import threading
-⠀
-def run_bot():
+
+    def run_bot():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(setup_webhook())
-⠀
-threading.Thread(target=run_bot).start()
+
+    threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=10000)
