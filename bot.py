@@ -107,10 +107,13 @@ async def setup_webhook():
     await application.initialize()
     await application.start()
 
-if __name__ == "__main__":
-    logging.warning("==> ЗАПУСК БОТА")
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=10000,
-        webhook_url="https://raznesi-bot.onrender.com/webhook"
-    )
+if name == "m͟a͟i͟n͟":
+    import threading
+⠀
+def run_bot():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(setup_webhook())
+⠀
+threading.Thread(target=run_bot).start()
+    app.run(host="0.0.0.0", port=10000)
