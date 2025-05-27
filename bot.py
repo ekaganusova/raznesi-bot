@@ -1,12 +1,13 @@
 import os
 import logging
-import asyncio
-import threading
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Application, CommandHandler, MessageHandler,
-    ContextTypes, filters
+    Application,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters
 )
 from openai import OpenAI
 
@@ -21,34 +22,31 @@ BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
 WEBHOOK_URL = "https://raznesi-bot.onrender.com"
 
-# Создание приложения Telegram
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
-application = Application.builder().token(BOT_TOKEN).build()
+# Telegram Application
+application = Application.builder().token(BOT_TOKEN).updater(None).build()
 
-
-# /start
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("Хочу такого же бота", url="https://t.me/ekaterina_ganusova")],
         [InlineKeyboardButton("Отличный разбор, хочу больше", url="https://t.me/ekaterina_ganusova")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    text = (
-        "Привет!\n"
-        "Я бот, созданный с помощью AI, чтобы проверять бизнес-идеи на прочность. "
+
+    await update.message.reply_text(
+        "Привет!\nЯ бот, созданный с помощью AI, чтобы проверять бизнес-идеи на прочность. "
         "Напиши свою — и я устрою ей разнос как маркетолог: жёстко, с юмором и по делу.\n\n"
         "Как использовать:\n"
         "1. Просто напиши свою идею.\n"
-        "2. Получи разнос."
+        "2. Получи разнос.",
+        reply_markup=reply_markup
     )
-    await update.message.reply_text(text, reply_markup=reply_markup)
 
-
-# Ответ на сообщение
+# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     await update.message.reply_text("Оцениваю запрос...")
+
     try:
         client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENAI_KEY)
         response = client.chat.completions.create(
@@ -70,43 +68,36 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(traceback.format_exc())
         await update.message.reply_text("GPT сломался. Попробуй позже.")
 
-
 # Обработчики
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-
 # Flask маршруты
-@app.route("/", methods=["GET"])
+@app.route("/")
 def index():
     return "OK"
 
 @app.route("/webhook", methods=["POST"])
-def webhook():
+async def webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
-        asyncio.run_coroutine_threadsafe(application.process_update(update), loop)
-        logging.warning("==> ПОЛУЧЕН WEBHOOK")
+        await application.process_update(update)
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(e)
     return "ok"
 
-
-# Запуск setup + Telegram
-async def setup_bot():
-    await application.initialize()
-    await application.bot.delete_webhook()
-    await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
-    await application.start()
-
-
+# Запуск
 if __name__ == "__main__":
-    logging.warning("==> ЗАПУСК ПРИЛОЖЕНИЯ")
+    import asyncio
 
-    def run_async():
-        loop.run_until_complete(setup_bot())
+    async def main():
+        logging.warning("==> ЗАПУСК БОТА")
+        await application.initialize()
+        await application.bot.delete_webhook()
+        await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
+        await application.start()
 
-    threading.Thread(target=run_async).start()
+    asyncio.run(main())
     app.run(host="0.0.0.0", port=10000)
