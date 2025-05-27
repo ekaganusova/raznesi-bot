@@ -43,9 +43,10 @@ import requests
 
 # ...
 
+# Сообщения
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
-    await update.message.reply_text("Разношу запрос...подожди немного😉")
+    await update.message.reply_text("Оцениваю запрос...")
     try:
         client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENAI_KEY)
         response = client.chat.completions.create(
@@ -60,13 +61,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
         )
         answer = response.choices[0].message.content
+        answer += "\n\nОстались вопросы или ты уже всё понял? 🤭"
         await update.message.reply_text(answer)
     except Exception as e:
         import traceback
         logging.error("GPT ОШИБКА:")
         logging.error(traceback.format_exc())
         await update.message.reply_text("GPT сломался. Попробуй позже.")
-
+        
         # Запускаем синхронный запрос в отдельном потоке
         answer = await asyncio.to_thread(fetch_response)
         await update.message.reply_text(answer)
