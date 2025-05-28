@@ -66,19 +66,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+from flask import Flask, request
+from telegram import Update
+import asyncio
+import logging
+import traceback
+
+# Переменные и инициализация
+app = Flask(__name__)
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
 # Flask webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
-        
-        # Получаем активный loop из application
-        loop = asyncio.get_event_loop_policy().get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
 
+        # Без get_event_loop — просто передаём в созданный loop
         asyncio.run_coroutine_threadsafe(application.process_update(update), loop)
     except Exception:
         logging.error(traceback.format_exc())
