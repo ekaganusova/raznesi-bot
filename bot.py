@@ -66,7 +66,7 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 # Webhook обработчик Flask
-@app.route("/webhook", methods=["POST"])
+@@app.route("/webhook", methods=["POST"])
 def webhook():
     try:
         data = request.get_json(force=True)
@@ -79,6 +79,11 @@ def webhook():
         asyncio.set_event_loop(loop)
         loop.run_until_complete(process())
         loop.close()
+
+    except Exception:
+        logging.error("Ошибка webhook:")
+        logging.error(traceback.format_exc())
+    return "ok"
 
     except Exception:
         logging.error("Ошибка webhook:")
