@@ -36,7 +36,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=markup
     )
 
-# Обработка сообщений
+# GPT-ответ
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     logging.info(f"ПОЛУЧЕНО: {idea}")
@@ -65,36 +65,36 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Webhook для Telegram
+# Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
 
-        # получаем loop из текущего контекста Flask-сервера
-        loop = asyncio.get_running_loop()
-        loop.create_task(application.process_update(update))
+        async def process():
+            await application.process_update(update)
 
-    except RuntimeError:
-        # если нет активного loop — создаём его и запускаем задачу
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(application.process_update(update))
-        loop.close()
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(process())
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(process())
+            loop.close()
 
     except Exception:
         logging.error("Ошибка webhook:")
         logging.error(traceback.format_exc())
-
     return "ok"
-    
-# Ответ на проверку / (Render Healthcheck)
-@app.route("/", methods=["GET", "HEAD"])
-def root():
-    return "OK", 200
 
-# Установка webhook
+# Проверка, что всё живо
+@app.route("/")
+def index():
+    return "OK"
+
+# Запуск
 async def setup():
     await application.initialize()
     await application.bot.delete_webhook()
@@ -102,15 +102,14 @@ async def setup():
     await application.start()
     logging.info("Бот запущен и webhook установлен")
 
-# Запуск
 if __name__ == "__main__":
-    # Telegram бот в отдельном потоке
-    def run_bot():
-        asyncio.run(setup())
-
     import threading
+    def run_bot():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(setup())
+
     threading.Thread(target=run_bot).start()
 
-    # Запуск Flask
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
