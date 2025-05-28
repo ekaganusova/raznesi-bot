@@ -91,7 +91,7 @@ async def setup():
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
     await application.start()
     logging.info("Бот запущен и webhook установлен")
-
+    
 # Запуск Flask и Telegram
 if __name__ == "__main__":
     def run():
