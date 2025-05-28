@@ -81,7 +81,6 @@ def webhook():
 
 # Запуск приложения
 if __name__ == "__main__":
-    # Установка webhook перед запуском Flask
     async def start_bot():
         await application.initialize()
         await application.bot.delete_webhook()
@@ -89,5 +88,16 @@ if __name__ == "__main__":
         await application.start()
         logging.info("==> Webhook установлен")
 
-    asyncio.run(start_bot())
+    # Запускаем бота в asyncio потоке
+    import threading
+
+    def run():
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(start_bot())
+
+    threading.Thread(target=run).start()
+
+    # Render ожидает, что приложение будет слушать порт
     app.run(host="0.0.0.0", port=10000)
