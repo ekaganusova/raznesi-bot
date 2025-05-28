@@ -62,9 +62,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id, text="GPT сломался. Попробуй позже.")
 
 # Роут для проверки
-@app.route("/")
-def index():
-    return "OK"
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    try:
+        data = request.get_json(force=True)
+        update = Update.de_json(data, application.bot)
+        asyncio.run(application.process_update(update))
+    except Exception as e:
+        logging.error("Ошибка webhook:")
+        logging.error(traceback.format_exc())
+    return "ok"
 
 # Обработчики
 application.add_handler(CommandHandler("start", start))
