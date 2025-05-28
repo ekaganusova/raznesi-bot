@@ -57,6 +57,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         answer = response.choices[0].message.content
         await update.message.reply_text(answer + "\n\nОстались вопросы или еще поболтаем? 🤗")
     except Exception:
+        logging.error("GPT ОШИБКА:")
         logging.error(traceback.format_exc())
         await update.message.reply_text("GPT сломался. Попробуй позже.")
 
@@ -64,27 +65,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Webhook route
+# Webhook обработчик Flask
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
 
-        # получаем loop из application (он уже внутри нужного thread)
-        future = asyncio.run_coroutine_threadsafe(application.process_update(update), application.loop)
-        future.result()  # можно закомментировать если не нужен блокирующий вызов
+        # новый event loop — стабильный способ
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(application.process_update(update))
+        loop.close()
 
     except Exception:
         logging.error("Ошибка webhook:")
         logging.error(traceback.format_exc())
     return "ok"
-    
+
+# Проверка главной страницы
 @app.route("/")
 def index():
     return "OK"
 
-# Установка Webhook
+# Установка webhook
 async def setup():
     await application.initialize()
     await application.bot.delete_webhook()
@@ -92,15 +96,16 @@ async def setup():
     await application.start()
     logging.info("Бот запущен и webhook установлен")
 
-# Запуск
+# Запуск сервиса
 if __name__ == "__main__":
-    def run():
+    # Запуск Telegram бота в отдельном потоке
+    def run_bot():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(setup())
-
     import threading
-    threading.Thread(target=run).start()
+    threading.Thread(target=run_bot).start()
 
-    port = int(os.environ.get("PORT", 10000))  # заменили на динамический порт
-    app.run(host="0.0.0.0", port=port)         # ← Render требует этот порт
+    # Flask запускается на порту, который задаёт Render
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
