@@ -71,12 +71,18 @@ def webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
-        asyncio.run(application.process_update(update))
+
+        # Используем уже запущенный event loop приложения
+        loop = application._loop
+
+        # Планируем задачу в нём (не блокируя поток Flask)
+        loop.create_task(application.process_update(update))
+
     except Exception:
         logging.error("Ошибка webhook:")
         logging.error(traceback.format_exc())
-    return "ok"
 
+    return "ok"
 # Ответ на проверку / (Render Healthcheck)
 @app.route("/", methods=["GET", "HEAD"])
 def root():
