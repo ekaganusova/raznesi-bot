@@ -80,6 +80,7 @@ def webhook():
         logging.error(traceback.format_exc())
     return "ok"
 
+
 # Проверка главной страницы
 @app.route("/")
 def index():
