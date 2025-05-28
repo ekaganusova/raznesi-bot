@@ -67,11 +67,13 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 
 # Webhook (без явного event loop!)
 @app.route("/webhook", methods=["POST"])
-async def webhook():
+def webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
-        await application.process_update(update)
+
+        asyncio.run(application.process_update(update))
+
     except Exception:
         logging.error("Ошибка webhook:")
         logging.error(traceback.format_exc())
