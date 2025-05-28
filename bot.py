@@ -1,7 +1,7 @@
 import os
 import logging
-import asyncio
 import traceback
+import asyncio
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s — %(levelname)s �
 # Flask
 app = Flask(__name__)
 
-# Telegram
+# Telegram Application
 application = Application.builder().token(BOT_TOKEN).build()
 
 # Команда /start
@@ -54,7 +54,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 {"role": "user", "content": f"Идея: {idea}"}
             ],
             extra_headers={
-                "HTTP-Referer": "https://raznesi-bot.onrender.com",
+                "HTTP-Referer": WEBHOOK_URL,
                 "X-Title": "raznesi_bot"
             }
         )
@@ -70,49 +70,42 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Webhook для Telegram
-import threading  # убедись, что импорт есть вверху
-
+# Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
-
-        def run_update():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(application.process_update(update))
-            loop.close()
-
-        threading.Thread(target=run_update).start()
-
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(application.process_update(update))
+        loop.close()
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(traceback.format_exc())
     return "ok"
-    
-# Главная страница
+
+# Проверка
 @app.route("/")
 def index():
     return "OK"
 
 # Установка webhook
 async def setup_webhook():
-    logging.warning("==> НАСТРОЙКА ВЕБХУКА")
+    logging.info("==> УСТАНОВКА WEBHOOK")
     await application.initialize()
     await application.bot.delete_webhook()
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
     await application.start()
 
-# Запуск Flask и webhook
+# Запуск
 if __name__ == "__main__":
     import threading
 
-    def run():
+    def run_bot():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(setup_webhook())
 
-    threading.Thread(target=run).start()
+    threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=10000)
