@@ -98,8 +98,8 @@ if __name__ == "__main__":
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(setup())
+
     import threading
     threading.Thread(target=run).start()
 
-    # ВАЖНО: Render требует app.run
     app.run(host="0.0.0.0", port=10000)
