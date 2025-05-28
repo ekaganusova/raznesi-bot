@@ -18,10 +18,10 @@ app = Flask(__name__)
 # Логирование
 logging.basicConfig(level=logging.INFO, format="%(asctime)s — %(levelname)s — %(message)s")
 
-# Telegram
+# Telegram Application
 application = Application.builder().token(BOT_TOKEN).build()
 
-# /start
+# Обработчик команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("🔥ЖМУ НА КНОПКУ🔥", url="https://t.me/ekaterina_ganusova")]]
     markup = InlineKeyboardMarkup(keyboard)
@@ -36,7 +36,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=markup
     )
 
-# GPT-ответ
+# Обработка входящих сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     logging.info(f"ПОЛУЧЕНО: {idea}")
@@ -55,7 +55,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
         )
         answer = response.choices[0].message.content
-        await update.message.reply_text(answer + "\n\nОстались вопросы или еще поболтаем? 🤗")
+        await update.message.reply_text(answer + "\n\nОстались вопросы или ещё поболтаем? 🤗")
     except Exception:
         logging.error("GPT ОШИБКА:")
         logging.error(traceback.format_exc())
@@ -65,51 +65,39 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Webhook
+# Webhook (без явного event loop!)
 @app.route("/webhook", methods=["POST"])
-def webhook():
+async def webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
-
-        async def process():
-            await application.process_update(update)
-
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(process())
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(process())
-            loop.close()
-
+        await application.process_update(update)
     except Exception:
         logging.error("Ошибка webhook:")
         logging.error(traceback.format_exc())
     return "ok"
 
-# Проверка, что всё живо
+# Корневая страница
 @app.route("/")
 def index():
     return "OK"
 
-# Запуск
-async def setup():
+# Установка Webhook
+async def setup_webhook():
     await application.initialize()
     await application.bot.delete_webhook()
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
     await application.start()
     logging.info("Бот запущен и webhook установлен")
 
+# Запуск
 if __name__ == "__main__":
     import threading
-    def run_bot():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(setup())
 
-    threading.Thread(target=run_bot).start()
+    def run_telegram():
+        asyncio.run(setup_webhook())
+
+    threading.Thread(target=run_telegram).start()
 
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
