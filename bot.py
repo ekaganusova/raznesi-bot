@@ -1,6 +1,8 @@
 import os
 import logging
-from flask import Flask
+import asyncio
+import traceback
+from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from openai import OpenAI
@@ -19,7 +21,7 @@ app = Flask(__name__)
 # Telegram
 application = Application.builder().token(BOT_TOKEN).build()
 
-# Старт
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("🔥ЖМУ НА КНОПКУ🔥", url="https://t.me/ekaterina_ganusova")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -34,7 +36,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(text, reply_markup=reply_markup)
 
-# Сообщения
+# Обработка текста
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     logging.info(f"ПОЛУЧЕНО: {idea}")
@@ -58,10 +60,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         logging.error("GPT ОШИБКА:")
-        logging.exception(e)
+        logging.error(traceback.format_exc())
         await context.bot.send_message(chat_id=update.effective_chat.id, text="GPT сломался. Попробуй позже.")
 
-# Роут для проверки
+# Обработчики
+application.add_handler(CommandHandler("start", start))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+# Webhook (Flask маршрут)
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
@@ -73,15 +79,15 @@ def webhook():
         logging.error(traceback.format_exc())
     return "ok"
 
-# Обработчики
-application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-# Запуск через application.run_webhook
+# Запуск приложения
 if __name__ == "__main__":
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=10000,
-        webhook_url=f"{WEBHOOK_URL}/webhook",
-        allowed_updates=Update.ALL_TYPES,
-    )
+    # Установка webhook перед запуском Flask
+    async def start_bot():
+        await application.initialize()
+        await application.bot.delete_webhook()
+        await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
+        await application.start()
+        logging.info("==> Webhook установлен")
+
+    asyncio.run(start_bot())
+    app.run(host="0.0.0.0", port=10000)
