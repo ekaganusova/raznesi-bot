@@ -18,27 +18,25 @@ app = Flask(__name__)
 # Логирование
 logging.basicConfig(level=logging.INFO, format="%(asctime)s — %(levelname)s — %(message)s")
 
-# Telegram bot
+# Telegram
 application = Application.builder().token(BOT_TOKEN).build()
 
-# Обработчики
+# /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("🔥ЖМУ НА КНОПКУ🔥", url="https://t.me/ekaterina_ganusova")],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    text = (
+    keyboard = [[InlineKeyboardButton("🔥ЖМУ НА КНОПКУ🔥", url="https://t.me/ekaterina_ganusova")]]
+    markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
         "Привет!\n"
         "Я бот, созданный с помощью AI✨, чтобы проверять бизнес-идеи на прочность. "
         "Напиши свою — и я устрою ей разнос как маркетолог: жёстко, с юмором и по делу.\n\n"
         "Как использовать:\n"
         "1. Просто напиши свою идею.\n"
         "2. Получи разнос.\n"
-        "3. Если есть вопросы или хочешь такого же бота — жми на кнопку👇🏻"
+        "3. Если есть вопросы или хочешь такого же бота — жми на кнопку👇🏻",
+        reply_markup=markup
     )
-    await update.message.reply_text(text, reply_markup=reply_markup)
 
+# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     logging.info(f"ПОЛУЧЕНО: {idea}")
@@ -62,39 +60,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(traceback.format_exc())
         await update.message.reply_text("GPT сломался. Попробуй позже.")
 
-# Telegram routing
+# Обработчики
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-from flask import Flask, request
-from telegram import Update
-import asyncio
-import logging
-import traceback
-
-# Переменные и инициализация
-app = Flask(__name__)
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
-
-# Flask webhook
+# Webhook route
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
-
         loop = asyncio.get_event_loop()
         if loop.is_closed():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-
         loop.create_task(application.process_update(update))
-
     except Exception:
         logging.error(traceback.format_exc())
     return "ok"
-    
+
+@app.route("/")
+def index():
+    return "OK"
+
 # Установка Webhook
 async def setup():
     await application.initialize()
@@ -102,25 +90,15 @@ async def setup():
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
     await application.start()
     logging.info("Бот запущен и webhook установлен")
-    
-# Запуск Flask и Telegram
+
+# Запуск
 if __name__ == "__main__":
-    import threading
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
     def run():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         loop.run_until_complete(setup())
 
-    def start_loop():
-        loop.run_forever()
-
-    # Запускаем Telegram setup
+    import threading
     threading.Thread(target=run).start()
 
-    # Запускаем event loop
-    threading.Thread(target=start_loop).start()
-
-    # Render требует app.run
     app.run(host="0.0.0.0", port=10000)
