@@ -102,4 +102,5 @@ if __name__ == "__main__":
     import threading
     threading.Thread(target=run).start()
 
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))  # заменили на динамический порт
+    app.run(host="0.0.0.0", port=port)         # ← Render требует этот порт
