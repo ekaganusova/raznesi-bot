@@ -71,6 +71,8 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 # Webhook для Telegram
+import threading  # убедись, что импорт есть вверху
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
