@@ -37,39 +37,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, reply_markup=reply_markup)
 
 # Ответ на сообщение
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    idea = update.message.text
-    logging.warning(f"ПОЛУЧЕНО: {idea}")
-
+@app.route("/webhook", methods=["POST"])
+def webhook():
     try:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Оцениваю запрос...")
+        data = request.get_json(force=True)
+        logging.warning("==> ПОЛУЧЕН WEBHOOK")
 
-        client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=OPENAI_KEY,
-        )
+        update = Update.de_json(data, application.bot)
 
-        response = client.chat.completions.create(
-            model="openai/gpt-4o",
-            messages=[
-                {"role": "system", "content": "Ты — требовательный маркетолог. Отвечай строго, по делу и с юмором."},
-                {"role": "user", "content": f"Идея: {idea}"}
-            ],
-            extra_headers={
-                "HTTP-Referer": "https://raznesi-bot.onrender.com",
-                "X-Title": "raznesi_bot"
-            }
-        )
+        # Логируем входящий текст (если это сообщение)
+        if update.message:
+            logging.info(f"ТЕКСТ СООБЩЕНИЯ: {update.message.text}")
+        elif update.callback_query:
+            logging.info(f"CALLBACK: {update.callback_query.data}")
 
-        answer = response.choices[0].message.content + "\n\nОстались вопросы или ты уже всё понял? 🤭"
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=answer)
+        # Обработка обновления
+        asyncio.run(application.process_update(update))
 
     except Exception as e:
-        logging.error("GPT ОШИБКА:")
-        logging.error(traceback.format_exc().strip())
-        print(traceback.format_exc())  # для наглядности в Render логе
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="GPT сломался. Попробуй позже.")
-        
+        logging.error("Ошибка webhook:")
+        logging.exception(e)
+
+    return "ok"
+    
 # Обработчики
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
