@@ -23,12 +23,21 @@ application = Application.builder().token(BOT_TOKEN).build()
 
 # Обработчики
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("🔥ЖМУ НА КНОПКУ🔥", url="https://t.me/ekaterina_ganusova")]]
-    markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
-        "Привет!\nЯ бот-маркетолог. Напиши идею, и я устрою разнос.\n\nЖми кнопку👇🏻",
-        reply_markup=markup
+    keyboard = [
+        [InlineKeyboardButton("🔥ЖМУ НА КНОПКУ🔥", url="https://t.me/ekaterina_ganusova")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    text = (
+        "Привет!\n"
+        "Я бот, созданный с помощью AI✨, чтобы проверять бизнес-идеи на прочность. "
+        "Напиши свою — и я устрою ей разнос как маркетолог: жёстко, с юмором и по делу.\n\n"
+        "Как использовать:\n"
+        "1. Просто напиши свою идею.\n"
+        "2. Получи разнос.\n"
+        "3. Если есть вопросы или хочешь такого же бота — жми на кнопку👇🏻"
     )
+    await update.message.reply_text(text, reply_markup=reply_markup)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
