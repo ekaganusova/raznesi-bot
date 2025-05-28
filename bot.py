@@ -48,7 +48,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
         )
         answer = response.choices[0].message.content
-        await update.message.reply_text(answer + "\n\nОстались вопросы или ты уже всё понял? 🤭")
+        await update.message.reply_text(answer + "\n\nОстались вопросы или еще поболтаем? 🤗")
     except Exception:
         logging.error(traceback.format_exc())
         await update.message.reply_text("GPT сломался. Попробуй позже.")
