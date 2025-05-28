@@ -105,7 +105,22 @@ if __name__ == "__main__":
         asyncio.set_event_loop(loop)
         loop.run_until_complete(setup())
 
+        # Запускаем обработку событий
+        def start_loop():
+            loop.run_forever()
+        threading.Thread(target=start_loop).start()
+
     import threading
     threading.Thread(target=run).start()
+
+    # Render требует app.run
+    app.run(host="0.0.0.0", port=10000)
+
+# Запуск event loop в отдельном потоке
+def start_loop():
+    loop.run_forever()
+
+import threading
+threading.Thread(target=start_loop).start()
 
     app.run(host="0.0.0.0", port=10000)
