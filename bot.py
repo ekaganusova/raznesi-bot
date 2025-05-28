@@ -1,16 +1,15 @@
 import os
 import logging
-import asyncio
-import traceback
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
-import openai
+from openai import OpenAI
+import asyncio
 
 # Настройки
-BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-OPENAI_KEY = os.environ.get("OPENAI_KEY")
-WEBHOOK_URL = "https://raznesi-bot.onrender.com"
+BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
+OPENAI_KEY = os.getenv("OPENAI_KEY")
+WEBHOOK_URL = "https://raznesi-bot.onrender.com"  # Твой URL на Render
 
 # Flask
 app = Flask(__name__)
@@ -18,11 +17,8 @@ app = Flask(__name__)
 # Логирование
 logging.basicConfig(level=logging.INFO, format="%(asctime)s — %(levelname)s — %(message)s")
 
-# Telegram
+# Telegram Application
 application = Application.builder().token(BOT_TOKEN).build()
-
-# Устанавливаем ключ OpenAI
-openai.api_key = OPENAI_KEY
 
 # /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -39,47 +35,46 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=markup
     )
 
-# Обработка сообщений
+# Сообщения
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     logging.info(f"ПОЛУЧЕНО: {idea}")
+    await update.message.reply_text("Оцениваю запрос...")
+
     try:
-        await update.message.reply_text("Оцениваю запрос...")
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
+        client = OpenAI(
+            api_key=OPENAI_KEY,
+            base_url="https://openrouter.ai/api/v1"
+        )
+        chat = client.chat.completions.create(
+            model="openai/gpt-4o",
             messages=[
                 {"role": "system", "content": "Ты — требовательный маркетолог. Отвечай строго, по делу и с юмором."},
                 {"role": "user", "content": f"Идея: {idea}"}
-            ]
+            ],
+            extra_headers={
+                "HTTP-Referer": WEBHOOK_URL,
+                "X-Title": "raznesi_bot"
+            }
         )
-        answer = response['choices'][0]['message']['content']
-        await update.message.reply_text(answer + "\n\nОстались вопросы или еще поболтаем? 🤗")
-    except Exception:
-        logging.error("GPT ОШИБКА:")
-        logging.error(traceback.format_exc())
+        answer = chat.choices[0].message.content
+        await update.message.reply_text(answer + "\n\nОстались вопросы или ещё поболтаем? 🤗")
+    except Exception as e:
+        logging.error("GPT ОШИБКА: %s", e)
         await update.message.reply_text("GPT сломался. Попробуй позже.")
 
 # Обработчики
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Webhook обработчик
+# Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    try:
-        data = request.get_json(force=True)
-        update = Update.de_json(data, application.bot)
+    data = request.get_json(force=True)
+    update = Update.de_json(data, application.bot)
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(application.process_update(update))
-        loop.close()
-
-    except Exception:
-        logging.error("Ошибка webhook:")
-        logging.error(traceback.format_exc())
+    asyncio.run(application.process_update(update))
     return "ok"
-
 
 # Проверка главной страницы
 @app.route("/")
@@ -87,21 +82,20 @@ def index():
     return "OK"
 
 # Установка webhook
-async def setup():
+async def setup_webhook():
     await application.initialize()
     await application.bot.delete_webhook()
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
     await application.start()
     logging.info("Бот запущен и webhook установлен")
 
-# Запуск сервиса
+# Запуск
 if __name__ == "__main__":
-    def run_bot():
-        asyncio.run(setup())
-
     import threading
-    threading.Thread(target=run_bot).start()
+
+    threading.Thread(target=lambda: asyncio.run(setup_webhook())).start()
 
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+    
         
