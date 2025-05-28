@@ -82,7 +82,7 @@ def webhook():
         logging.error("Ошибка webhook:")
         logging.error(traceback.format_exc())
     return "ok"
-
+    
 @app.route("/")
 def index():
     return "OK"
