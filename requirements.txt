@@ -1,4 +1,4 @@
 python-telegram-bot[webhooks]==20.7
 flask==2.3.3
 requests
-pip install openai==0.28.1
+openai==0.28.1
