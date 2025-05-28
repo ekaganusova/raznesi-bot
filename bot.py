@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s — %(levelname)s �
 # Flask
 app = Flask(__name__)
 
-# Telegram Application
+# Telegram
 application = Application.builder().token(BOT_TOKEN).build()
 
 # Команда /start
@@ -70,25 +70,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Flask routes
-@app.route("/")
-def index():
-    return "OK"
-
+# Webhook для Telegram
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
         data = request.get_json(force=True)
-        logging.warning("==> ПОЛУЧЕН WEBHOOK")
-
         update = Update.de_json(data, application.bot)
-        asyncio.run(application.process_update(update))
-
+        loop = asyncio.get_event_loop_policy().get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        loop.create_task(application.process_update(update))
     except Exception as e:
         logging.error("Ошибка webhook:")
         logging.error(traceback.format_exc())
-
     return "ok"
+
+# Главная страница
+@app.route("/")
+def index():
+    return "OK"
 
 # Установка webhook
 async def setup_webhook():
@@ -98,7 +99,7 @@ async def setup_webhook():
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
     await application.start()
 
-# Запуск
+# Запуск Flask и webhook
 if __name__ == "__main__":
     import threading
 
