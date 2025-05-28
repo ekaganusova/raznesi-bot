@@ -70,7 +70,8 @@ def webhook():
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
 
-        asyncio.run(application.process_update(update))
+        # Вместо asyncio.run — используем create_task в уже запущенном приложении
+        asyncio.get_event_loop().create_task(application.process_update(update))
 
     except Exception:
         logging.error("Ошибка webhook:")
