@@ -1,6 +1,7 @@
 import os
 import logging
 import asyncio
+import traceback 
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
@@ -39,6 +40,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     logging.warning(f"ПОЛУЧЕНО: {idea}")
+
     try:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="Оцениваю запрос...")
 
@@ -46,6 +48,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENAI_KEY,
         )
+
         response = client.chat.completions.create(
             model="openai/gpt-4o",
             messages=[
@@ -57,15 +60,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "X-Title": "raznesi_bot"
             }
         )
+
         answer = response.choices[0].message.content + "\n\nОстались вопросы или ты уже всё понял? 🤭"
         await context.bot.send_message(chat_id=update.effective_chat.id, text=answer)
 
     except Exception as e:
-        import traceback
         logging.error("GPT ОШИБКА:")
-        logging.error(traceback.format_exc())
+        logging.error(traceback.format_exc().strip())
+        print(traceback.format_exc())  # для наглядности в Render логе
         await context.bot.send_message(chat_id=update.effective_chat.id, text="GPT сломался. Попробуй позже.")
-
+        
 # Обработчики
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
