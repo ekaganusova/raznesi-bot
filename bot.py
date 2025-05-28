@@ -42,22 +42,34 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# Обработка сообщений
+# Обработка входящих сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     logging.info(f"ПОЛУЧЕНО: {idea}")
+    
     try:
         await update.message.reply_text("Оцениваю запрос...")
-        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENAI_KEY)
-        response = openai.ChatCompletion.create(
-    model="openai/gpt-4o",
-    messages=[
-        {"role": "system", "content": "Ты — требовательный маркетолог. Отвечай строго, по делу и с юмором."},
-        {"role": "user", "content": f"Идея: {idea}"}
-    ]
-)
-answer = response['choices'][0]['message']['content']
-        await update.message.reply_text(answer + "\n\nОстались вопросы или ещё поболтаем? 🤗")
+
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=OPENAI_KEY
+        )
+
+        response = client.chat.completions.create(
+            model="openai/gpt-4o",
+            messages=[
+                {"role": "system", "content": "Ты — требовательный маркетолог. Отвечай строго, по делу и с юмором."},
+                {"role": "user", "content": f"Идея: {idea}"}
+            ],
+            extra_headers={
+                "HTTP-Referer": WEBHOOK_URL,
+                "X-Title": "raznesi_bot"
+            }
+        )
+
+        answer = response.choices[0].message.content
+        await update.message.reply_text(answer + "\n\nОстались вопросы или еще поболтаем? 🤗")
+
     except Exception:
         logging.error("GPT ОШИБКА:")
         logging.error(traceback.format_exc())
