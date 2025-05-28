@@ -72,7 +72,14 @@ def webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
-        asyncio.run(application.process_update(update))
+        
+        # Получаем активный loop из application
+        loop = asyncio.get_event_loop_policy().get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        asyncio.run_coroutine_threadsafe(application.process_update(update), loop)
     except Exception:
         logging.error(traceback.format_exc())
     return "ok"
