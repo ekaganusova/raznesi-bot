@@ -81,6 +81,11 @@ def webhook():
         logging.error(traceback.format_exc())
     return "ok"
 
+# Ответ на проверку / (Render Healthcheck)
+@app.route("/", methods=["GET", "HEAD"])
+def root():
+    return "OK", 200
+
 # Установка webhook
 async def setup():
     await application.initialize()
