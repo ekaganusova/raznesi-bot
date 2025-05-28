@@ -1,10 +1,11 @@
 import os
 import logging
-import asyncio
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from openai import OpenAI
+import asyncio
+import traceback
 
 # Настройки
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -22,24 +23,20 @@ application = Application.builder().token(BOT_TOKEN).build()
 
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        keyboard = [[InlineKeyboardButton("🔥ЖМУ НА КНОПКУ🔥", url="https://t.me/ekaterina_ganusova")]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        text = (
-            "Привет!\n"
-            "Я бот, созданный с помощью AI✨, чтобы проверять бизнес-идеи на прочность. "
-            "Напиши свою — и я устрою ей разнос как маркетолог: жёстко, с юмором и по делу.\n\n"
-            "Как использовать:\n"
-            "1. Просто напиши свою идею.\n"
-            "2. Получи разнос.\n"
-            "3. Есть вопросы? Жми кнопку👇🏻"
-        )
-        await update.message.reply_text(text, reply_markup=reply_markup)
-    except Exception as e:
-        logging.error("Ошибка в команде /start:")
-        logging.exception(e)
+    keyboard = [[InlineKeyboardButton("🔥ЖМУ НА КНОПКУ🔥", url="https://t.me/ekaterina_ganusova")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    text = (
+        "Привет!\n"
+        "Я бот, созданный с помощью AI✨, чтобы проверять бизнес-идеи на прочность. "
+        "Напиши свою — и я устрою ей разнос как маркетолог: жёстко, с юмором и по делу.\n\n"
+        "Как использовать:\n"
+        "1. Просто напиши свою идею.\n"
+        "2. Получи разнос.\n"
+        "3. Есть вопросы? Жми кнопку👇🏻"
+    )
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=reply_markup)
 
-# Обработка сообщений
+# Ответ на сообщение
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idea = update.message.text
     logging.info(f"ПОЛУЧЕНО: {idea}")
@@ -61,25 +58,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         answer = response.choices[0].message.content + "\n\nОстались вопросы или ты уже всё понял? 🤭"
         await context.bot.send_message(chat_id=update.effective_chat.id, text=answer)
 
-    except Exception as e:
+    except Exception:
         logging.error("GPT ОШИБКА:")
-        logging.exception(e)
+        logging.error(traceback.format_exc())
         await context.bot.send_message(chat_id=update.effective_chat.id, text="GPT сломался. Попробуй позже.")
 
-# Flask Webhook
+# Webhook Flask
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
         asyncio.run(application.process_update(update))
-    except Exception as e:
+    except Exception:
         logging.error("Ошибка webhook:")
-        logging.exception(e)
+        logging.error(traceback.format_exc())
     return "ok"
 
-# Главная страница
-@app.route("/", methods=["GET"])
+@app.route("/")
 def index():
     return "OK"
 
@@ -92,6 +88,5 @@ if __name__ == "__main__":
     application.run_webhook(
         listen="0.0.0.0",
         port=10000,
-        webhook_url=f"{WEBHOOK_URL}/webhook",
-        allowed_updates=Update.ALL_TYPES,
+        webhook_url=f"{WEBHOOK_URL}/webhook"
     )
