@@ -72,17 +72,14 @@ def webhook():
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
 
-        # безопасный запуск async функции
-        asyncio.run(application.process_update(update))
+        # Получаем существующий loop, в котором уже работает bot
+        loop = application.bot._application.loop  # безопасно для PTB >= v20
+        loop.create_task(application.process_update(update))
 
     except Exception:
         logging.error("Ошибка webhook:")
         logging.error(traceback.format_exc())
     return "ok"
-
-@app.route("/")
-def index():
-    return "OK"
 
 # Установка webhook
 async def setup():
