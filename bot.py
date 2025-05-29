@@ -27,12 +27,17 @@ def index():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(force=True), application.bot)
+
+    async def process():
+        await application.process_update(update)
+
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    loop.create_task(application.process_update(update))
+
+    loop.run_until_complete(process())
     return "ok", 200
 
 # Команда /start — ничего не делает (нет приветствия)
