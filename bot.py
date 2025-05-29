@@ -68,14 +68,24 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 # Webhook
-@app.route('/webhook', methods=["POST"])
+import asyncio
+
+@app.route("/webhook", methods=["POST"])
 def webhook():
+    if request.method == "POST":
+        update = Update.de_json(request.get_json(force=True), bot)
 
-    data = request.get_json(force=True)
-    update = Update.de_json(data, application.bot)
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError as e:
+            if "There is no current event loop" in str(e):
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            else:
+                raise
 
-    asyncio.run(application.process_update(update))
-    return "ok"
+        loop.create_task(application.process_update(update))
+        return "ok"
 
 # Проверка главной страницы
 @app.route("/")
