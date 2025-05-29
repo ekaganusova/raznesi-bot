@@ -30,16 +30,18 @@ def index():
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
+    json_data = request.get_json(force=True)
+    update = Update.de_json(json_data, application.bot)
+    
     try:
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        asyncio.get_event_loop().create_task(application.process_update(update))
-        return 'ok'
-    except RuntimeError as e:
-        # event loop is not running — create one manually
+        loop = asyncio.get_event_loop()
+        loop.create_task(application.process_update(update))
+    except RuntimeError:
+        # Если нет текущего event loop — создаём вручную
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(application.process_update(update))
-        return 'ok'
+    return 'ok'
         
 # Обработка команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
