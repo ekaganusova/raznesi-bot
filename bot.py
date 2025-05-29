@@ -38,7 +38,13 @@ def index():
 def webhook():
     try:
         update = Update.de_json(request.get_json(force=True), application.bot)
-        asyncio.run(application.process_update(update))
+
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(application.process_update(update))
+        else:
+            asyncio.run(application.process_update(update))
+
         return 'ok'
     except Exception as e:
         logging.error("Ошибка webhook:\n%s", e)
