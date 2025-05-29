@@ -32,15 +32,20 @@ def index():
 def webhook():
     json_data = request.get_json(force=True)
     update = Update.de_json(json_data, application.bot)
-    
+
+    async def handle_update():
+        await application.initialize()
+        await application.process_update(update)
+        await application.shutdown()
+
     try:
         loop = asyncio.get_event_loop()
-        loop.create_task(application.process_update(update))
+        loop.create_task(handle_update())
     except RuntimeError:
-        # Если нет текущего event loop — создаём вручную
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(application.process_update(update))
+        loop.run_until_complete(handle_update())
+
     return 'ok'
         
 # Обработка команды /start
