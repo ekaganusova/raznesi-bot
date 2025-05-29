@@ -24,8 +24,15 @@ application = Application.builder().token(TELEGRAM_TOKEN).build()
 def index():
     return "OK", 200
 
-@app.route("/webhook", methods=["POST"])
+@app.route('/webhook', methods=['POST'])
 def webhook():
+    try:
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        asyncio.run(application.process_update(update))
+        return 'ok'
+    except Exception as e:
+        logging.error("Ошибка webhook:\n%s", e)
+        return 'error', 500
     update = Update.de_json(request.get_json(force=True), application.bot)
     try:
         loop = asyncio.get_event_loop()
