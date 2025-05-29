@@ -3,62 +3,43 @@ import logging
 import os
 import requests
 from flask import Flask, request
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
 # Настройки
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENROUTER_KEY = os.getenv("OPENROUTER_KEY")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # например: https://your-app.onrender.com
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-# Инициализация Flask
+# Flask-приложение
 app = Flask(__name__)
 
 # Логирование
-logging.basicConfig(
-    format="%(asctime)s — %(levelname)s — %(message)s", level=logging.INFO
-)
+logging.basicConfig(format="%(asctime)s — %(levelname)s — %(message)s", level=logging.INFO)
 
 # Инициализация Telegram Application
 application = Application.builder().token(TELEGRAM_TOKEN).build()
-
-# Инициализация (требуется для работы process_update вручную)
-async def initialize_bot():
-    await application.initialize()
-
-asyncio.run(initialize_bot())
-
 
 @app.route("/")
 def index():
     return "OK", 200
 
-
-@app.route('/webhook', methods=['POST'])
+@app.route("/webhook", methods=["POST"])
 def webhook():
+    update = Update.de_json(request.get_json(force=True), application.bot)
     try:
-        update = Update.de_json(request.get_json(force=True), application.bot)
-
         loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(application.process_update(update))
-        else:
-            asyncio.run(application.process_update(update))
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    loop.create_task(application.process_update(update))
+    return "ok", 200
 
-        return 'ok'
-    except Exception as e:
-        logging.error("Ошибка webhook:\n%s", e)
-        return 'error', 500
-
-
-# Команда /start
+# Команда /start — ничего не делает (нет приветствия)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Привет! Напиши что-нибудь, и я тебе отвечу."
-    )
+    pass
 
-
-# Обработка обычных сообщений
+# Обработка текста
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         user_message = update.message.text
@@ -80,27 +61,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             json=data,
             timeout=15
         )
+
         response.raise_for_status()
         answer = response.json()["choices"][0]["message"]["content"]
-
-        keyboard = [
-            [InlineKeyboardButton("Хочу такого же бота", url="https://t.me/ekaterina_ganusova?start=bot")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        await update.message.reply_text(answer, reply_markup=reply_markup)
+        final_answer = answer.strip() + "\n\nПродолжаем?😉"
+        await update.message.reply_text(final_answer)
 
     except Exception as e:
         logging.error("GPT ОШИБКА:\n%s", e)
-        await update.message.reply_text("Ошибка обработки запроса 😢")
+        await update.message.reply_text("Произошла ошибка. Попробуй ещё раз 🛠")
 
-
-# Хендлеры
+# Регистрация хендлеров
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-
-# Установка Webhook
+# Установка webhook
 def setup_webhook():
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook"
     response = requests.post(url, data={"url": f"{WEBHOOK_URL}/webhook"})
@@ -108,7 +83,6 @@ def setup_webhook():
         logging.info("Webhook установлен: %s/webhook", WEBHOOK_URL)
     else:
         logging.error("Не удалось установить webhook: %s", response.text)
-
 
 if __name__ == "__main__":
     setup_webhook()
