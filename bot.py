@@ -39,8 +39,7 @@ def webhook():
         asyncio.set_event_loop(loop)
         loop.run_until_complete(application.process_update(update))
         return 'ok'
-
-
+        
 # Обработка команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привет! Напиши что-нибудь, и я тебе отвечу.")
