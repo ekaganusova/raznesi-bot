@@ -69,8 +69,8 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 
 # Webhook
 @app.route('/webhook', methods=["POST"])
-def
 def webhook():
+
     data = request.get_json(force=True)
     update = Update.de_json(data, application.bot)
 
